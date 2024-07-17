@@ -1,0 +1,11 @@
+usersha1-profile.csv
+usersha1-profile.tsv
+eda.txt
+cufile.log
+data/
+config.ini
+*.pkl
+rmm_log.txt
+spotify_audio_features_progress.csv
+synthetic.txt
+backup/
