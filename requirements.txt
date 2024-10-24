@@ -1,4 +1,8 @@
-scikit-surprise
-implicit
-tensorflow-recommenders-addons
-merlin
+pytorch
+pandas
+scikit-learn
+pickle
+numpy
+matplotlib
+seaborn
+tensorflow==2.15

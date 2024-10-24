@@ -9,3 +9,11 @@ rmm_log.txt
 spotify_audio_features_progress.csv
 synthetic.txt
 backup/
+tfrs/
+kaggle/
+dev.ini
+tensorflow_docs/
+misc/
+interview_docs/
+=12.0.0
+.vscode/
