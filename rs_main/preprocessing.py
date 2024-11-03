@@ -36,10 +36,11 @@ class DataPreprocessor:
         data['user_id_encoded'] = self.user_id_encoder.fit_transform(data['user_id'])
         data['gender_encoded'] = self.gender_encoder.fit_transform(data['gender'])
         data['genre_encoded'] = self.genre_encoder.fit_transform(data['genre'])
-        data['track_encoded'] = self.track_encoder.fit_transform(data['music_id'])  # Changed this line
+        # data['track_encoded'] = self.track_encoder.fit_transform(data['music_id'])  # Changed this line
         
         # TF-IDF Encoding for 'artist_name' only
         artist_tfidf = self.artist_tfidf_vectorizer.fit_transform(data['artist_name'])
+        
         
         # Ensure TF-IDF dimensions are consistent
         print(f"Artist TF-IDF Shape: {artist_tfidf.shape}")
@@ -56,12 +57,20 @@ class DataPreprocessor:
                 artist_tfidf_df[f'artist_tfidf_{i}'] = 0
 
         # Concatenate encoded DataFrames with the original DataFrame
+        # data_encoded = pd.concat([
+        #     data[['user_id_encoded', 'track_encoded', 'genre_encoded', 'gender_encoded', 'age', 'duration', 'acousticness', 
+        #           'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness', 'instrumentalness', 
+        #           'liveness', 'valence', 'tempo', 'time_signature', 'explicit', 'plays']],
+        #     artist_tfidf_df,
+        # ], axis=1)
+
         data_encoded = pd.concat([
-            data[['user_id_encoded', 'track_encoded', 'genre_encoded', 'gender_encoded', 'age', 'duration', 'acousticness', 
+            data[['user_id_encoded', 'genre_encoded', 'gender_encoded', 'age', 'duration', 'acousticness', 
                   'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness', 'instrumentalness', 
                   'liveness', 'valence', 'tempo', 'time_signature', 'explicit', 'plays']],
             artist_tfidf_df,
         ], axis=1)
+        
         
         # Verify the total number of features
         total_features = data_encoded.shape[1] - 2  # Exclude 'user_id_encoded' and 'plays'
@@ -69,7 +78,7 @@ class DataPreprocessor:
         
         print(f"Unique user IDs: {len(self.user_id_encoder.classes_)}")
         print(f"Unique artist features: {artist_tfidf.shape[1]}")
-        print(f"Unique track IDs: {len(self.track_encoder.classes_)}")
+        # print(f"Unique track IDs: {len(self.track_encoder.classes_)}")
         print(f"Unique genre IDs: {len(self.genre_encoder.classes_)}")
         
         return data_encoded
@@ -77,13 +86,10 @@ class DataPreprocessor:
     def feature_engineering(self, data_encoded):
         """
         Perform feature scaling on numerical features.
-        
-        Args:
-            data_encoded (pd.DataFrame): Encoded data.
-        
-        Returns:
-            pd.DataFrame: Data with scaled numerical features.
         """
+        # Normalize plays (target variable)
+        data_encoded['plays'] = (data_encoded['plays'] - data_encoded['plays'].min()) / (data_encoded['plays'].max() - data_encoded['plays'].min())
+        
         numerical_features = ['age', 'duration', 'acousticness', 'danceability', 'energy', 'key', 'loudness', 
                               'mode', 'speechiness', 'instrumentalness', 'liveness', 'valence', 'tempo', 
                               'time_signature', 'explicit']
@@ -126,30 +132,6 @@ class DataPreprocessor:
         )
         
         return train_features, val_features, test_features, train_target, val_target, test_target
-    # def split_data(self, features, target='plays', test_size=0.2, val_size=0.1):
-    #         """
-    #         Split the data into training, validation, and test sets.
-
-    #         Args:
-    #             features (np.array): Feature data.
-    #             target (np.array): Target data.
-    #             test_size (float): Proportion of the data to include in the test split.
-    #             val_size (float): Proportion of the training data to include in the validation split.
-
-    #         Returns:
-    #             tuple: Split data (train_features, val_features, test_features, train_target, val_target, test_target).
-    #         """
-    #         # Split into train and test
-    #         train_features, test_features, train_target, test_target = train_test_split(
-    #             features, target, test_size=test_size, random_state=42
-    #         )
-            
-    #         # Further split train into train and validation
-    #         train_features, val_features, train_target, val_target = train_test_split(
-    #             train_features, train_target, test_size=val_size, random_state=42
-    #         )
-            
-    #         return train_features, val_features, test_features, train_target, val_target, test_target
     
     def save_preprocessors(self, directory='models/'):
         """
@@ -161,8 +143,8 @@ class DataPreprocessor:
         with open(f'{directory}user_id_encoder.pkl', 'wb') as f:
             pickle.dump(self.user_id_encoder, f)
         
-        with open(f'{directory}track_encoder.pkl', 'wb') as f:
-            pickle.dump(self.track_encoder, f)
+        # with open(f'{directory}track_encoder.pkl', 'wb') as f:
+        #     pickle.dump(self.track_encoder, f)
         
         with open(f'{directory}gender_encoder.pkl', 'wb') as f:
             pickle.dump(self.gender_encoder, f)
@@ -186,8 +168,8 @@ class DataPreprocessor:
         with open(f'{directory}user_id_encoder.pkl', 'rb') as f:
             self.user_id_encoder = pickle.load(f)
         
-        with open(f'{directory}track_encoder.pkl', 'rb') as f:
-            self.track_encoder = pickle.load(f)
+        # with open(f'{directory}track_encoder.pkl', 'rb') as f:
+        #     self.track_encoder = pickle.load(f)
         
         with open(f'{directory}gender_encoder.pkl', 'rb') as f:
             self.gender_encoder = pickle.load(f)

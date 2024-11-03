@@ -1,10 +1,10 @@
 import torch
 import pandas as pd
 from preprocessing import DataPreprocessor
-from tensorflow_docs.model import HybridRecommender
+from model import HybridRecommender
 import pickle
 
-def make_inference(model, user_id, artist_features, track_id, genre_id, numerical_features, 
+def make_inference(model, user_id, artist_features, genre_id, numerical_features, 
                    user_encoder, track_encoder, genre_encoder, device):
     """
     Perform inference to predict plays for a specific user-item pair.
@@ -35,8 +35,9 @@ def make_inference(model, user_id, artist_features, track_id, genre_id, numerica
     
     # Assign default indices for OOV
     default_user_idx = len(user_encoder.classes_)
-    default_track_idx = len(track_encoder.classes_)
+    # default_track_idx = len(track_encoder.classes_)
     default_genre_idx = len(genre_encoder.classes_)
+    default_
     
     user_id_encoded = encode_id(user_encoder, user_id, default_user_idx)
     track_id_encoded = encode_id(track_encoder, track_id, default_track_idx)
