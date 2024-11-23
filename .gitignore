@@ -20,3 +20,7 @@ misc/
 interview_docs/
 =12.0.0
 .vscode/
+standardized_music_data.csv
+=12.0.0
+*.png
+msd_full_data.csv
