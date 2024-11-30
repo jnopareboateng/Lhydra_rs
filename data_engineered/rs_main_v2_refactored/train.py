@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from tqdm import tqdm, tqdm_notebook
 import sys
+import os
 
 # Add these near the top of the file, after imports
 TRAIN_BATCH_SIZE = 128
@@ -215,6 +216,9 @@ def train(model, dataloader, criterion, optimizer, device, check_gradients=False
 
 def main():
     try:
+        # Create models directory at the start
+        os.makedirs("models", exist_ok=True)
+        
         # Define device
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
@@ -229,7 +233,7 @@ def main():
         )
 
         # Load and preprocess data
-        filepath = "../../data/engineered_data.csv"
+        filepath = "../data/engineered_data.csv"
 
         # In main function, add error handling for data loading
         try:
@@ -574,3 +578,4 @@ def evaluate_model_per_user(predictions, test_targets, user_ids, k=10):
 
 if __name__ == "__main__":
     main()
+

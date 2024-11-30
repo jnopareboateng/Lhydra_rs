@@ -11,21 +11,24 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 class DataPreprocessor:
     NUMERICAL_COLS = [
         "age",
-        "duration",
-        "acousticness",
-        "key",
-        "mode",
-        "speechiness",
+        "gender",
+        "duration_ms",
+        "loudness",
         "instrumentalness",
         "liveness",
         "tempo",
-        "time_signature",
-        "explicit",
-        "music_age",
-        "energy_loudness",
-        "dance_valence"
+        "energy",
+        "danceability",
+        "valence",
+        "year",
     ]
 
+CATEGORICAL_COLS = [
+    "gender",
+    "genre",
+    "artist",
+    "track_id"
+]
     def __init__(
         self,
         test_size=0.2,
@@ -41,13 +44,15 @@ class DataPreprocessor:
         self.artist_tfidf_vectorizer = TfidfVectorizer(max_features=max_artist_features)
         self.genre_tfidf_vectorizer = TfidfVectorizer(max_features=max_genre_features)
         self.music_tfidf_vectorizer = TfidfVectorizer(max_features=max_music_features)
-        self.release_year_encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)  # Added release year encoder
+        self.release_year_encoder = OrdinalEncoder(
+            handle_unknown="use_encoded_value", unknown_value=-1
+        )  # Added release year encoder
         self.scaler = StandardScaler()
         self.unknown_user_id = "unknown_user"
         self.default_user_data = {
-            'age': 25,  # Default age
-            'gender': 'unknown',
-            'plays': 0
+            "age": 25,  # Default age
+            "gender": "Male",  # Default
+            "playcount": 0,
         }
 
     def load_data(self, filepath):
@@ -55,36 +60,36 @@ class DataPreprocessor:
         Load data from CSV with explicit dtypes
         """
         dtype_dict = {
-            'age': np.float32,
-            'duration': np.float32,
-            'acousticness': np.float32,
-            'key': np.float32,
-            'mode': np.float32,
-            'speechiness': np.float32,
-            'instrumentalness': np.float32,
-            'liveness': np.float32,
-            'tempo': np.float32,
-            'time_signature': np.float32,
-            'explicit': np.float32,
-            'music_age': np.float32,
-            'energy_loudness': np.float32,
-            'dance_valence': np.float32,
-            'plays': np.float32,
-            'user_id': str,  # Will be encoded later
-            'gender': str,   # Will be encoded later
-            'release_year': np.int32
+            "age": np.float32,
+            "duration_ms": np.float32,
+            "acousticness": np.float32,
+            "key": np.float32,
+            "mode": np.float32,
+            "speechiness": np.float32,
+            "instrumentalness": np.float32,
+            "liveness": np.float32,
+            "tempo": np.float32,
+            "time_signature": np.float32,
+            "explicit": np.float32,
+            "music_age": np.float32,
+            "energy_loudness": np.float32,
+            "dance_valence": np.float32,
+            "playcount": np.float32,
+            "user_id": str,  # Will be encoded later
+            "gender": str,  # Will be encoded later
+            "year": np.int32,
         }
-        
+
         data = pd.read_csv(filepath, dtype=dtype_dict)
         return data
 
     def fit(self, data):
         """Fit all preprocessors on training data"""
         self.gender_encoder.fit(data["gender"])
-        self.release_year_encoder.fit(data["release_year"])
-        self.artist_tfidf_vectorizer.fit(data["artist_name"])
+        self.release_year_encoder.fit(data["year"])
+        self.artist_tfidf_vectorizer.fit(data["artist"])
         self.genre_tfidf_vectorizer.fit(data["genre"])
-        self.music_tfidf_vectorizer.fit(data["music"])
+        self.music_tfidf_vectorizer.fit(data["name"])
         self.scaler.fit(data[self.NUMERICAL_COLS])
         return self
 
@@ -99,7 +104,7 @@ class DataPreprocessor:
                 # "user_id_hashed": np.vstack(data["user_id"].apply(self.hash_user_id)),
                 "gender_encoded": transform_fn(self.gender_encoder, data["gender"]),
                 "release_year_encoded": transform_fn(
-                    self.release_year_encoder, data["release_year"]
+                    self.release_year_encoder, data["year"]
                 ),
             }
         )
@@ -117,16 +122,16 @@ class DataPreprocessor:
         data["gender_encoded"] = self.gender_encoder.fit_transform(data["gender"])
 
         # Reshape release_year to 2D array and encode
-        release_year_2d = data["release_year"].values.reshape(-1, 1)
+        release_year_2d = data["year"].values.reshape(-1, 1)
         data["release_year_encoded"] = self.release_year_encoder.fit_transform(
             release_year_2d
         ).ravel()
 
         # Rest of the method remains the same...
         # TF-IDF Encoding
-        artist_tfidf = self.artist_tfidf_vectorizer.fit_transform(data["artist_name"])
+        artist_tfidf = self.artist_tfidf_vectorizer.fit_transform(data["artist"])
         genre_tfidf = self.genre_tfidf_vectorizer.fit_transform(data["genre"])
-        music_tfidf = self.music_tfidf_vectorizer.fit_transform(data["music"])
+        music_tfidf = self.music_tfidf_vectorizer.fit_transform(data["name"])
 
         # Get actual feature names from vectorizers
         artist_feature_names = [
@@ -148,20 +153,18 @@ class DataPreprocessor:
 
         # Combine all features in the expected order
         numerical_features = [
-            "age",
-            "duration",
-            "acousticness",
-            "key",
-            "mode",
-            "speechiness",
-            "instrumentalness",
-            "liveness",
-            "tempo",
-            "time_signature",
-            "explicit",
-            "music_age",
-            "energy_loudness",
-            "dance_valence"
+        "age",
+        "gender",
+        "duration_ms",
+        "loudness",
+        "instrumentalness",
+        "liveness",
+        "tempo",
+        "energy",
+        "danceability",
+        "valence",
+        "year",
+
         ]
 
         data_encoded = pd.DataFrame(
@@ -184,7 +187,7 @@ class DataPreprocessor:
         )
 
         # Verify release_year exists
-        if "release_year" not in data.columns:
+        if "year" not in data.columns:
             raise ValueError("release_year column missing from input data")
 
         # Add release year check after encoding
@@ -201,15 +204,15 @@ class DataPreprocessor:
         data["gender_encoded"] = self.gender_encoder.transform(data["gender"])
 
         # Reshape release_year to 2D array and encode
-        release_year_2d = data["release_year"].values.reshape(-1, 1)
+        release_year_2d = data["year"].values.reshape(-1, 1)
         data["release_year_encoded"] = self.release_year_encoder.transform(
             release_year_2d
         ).ravel()
 
         # TF-IDF Encoding
-        artist_tfidf = self.artist_tfidf_vectorizer.transform(data["artist_name"])
+        artist_tfidf = self.artist_tfidf_vectorizer.transform(data["artist"])
         genre_tfidf = self.genre_tfidf_vectorizer.transform(data["genre"])
-        music_tfidf = self.music_tfidf_vectorizer.transform(data["music"])
+        music_tfidf = self.music_tfidf_vectorizer.transform(data["name"])
 
         # Get actual feature names from vectorizers
         artist_feature_names = [
@@ -260,13 +263,13 @@ class DataPreprocessor:
             if col not in data_encoded.columns:
                 raise ValueError(f"Missing numerical column: {col}")
             # Convert to numeric, replacing any non-numeric values with NaN
-            data_encoded[col] = pd.to_numeric(data_encoded[col], errors='coerce')
+            data_encoded[col] = pd.to_numeric(data_encoded[col], errors="coerce")
             # Fill NaN values with 0 or another appropriate value
             data_encoded[col] = data_encoded[col].fillna(0).astype(np.float32)
-        
+
         return data_encoded
 
-    def split_data(self, data_encoded, target_column="plays", val_size=0.1):
+    def split_data(self, data_encoded, target_column="playcount", val_size=0.1):
         features = data_encoded.drop(columns=[target_column])
         target = data_encoded[target_column]
 
@@ -335,7 +338,7 @@ class DataPreprocessor:
     def create_new_user(self, user_data):
         """
         Create a new user profile and return encoded user data
-        
+
         Args:
             user_data (dict): Dictionary containing user information
                 Required keys: user_id
@@ -344,73 +347,80 @@ class DataPreprocessor:
             str: Encoded user_id
         """
         # Validate required fields
-        if 'user_id' not in user_data:
+        if "user_id" not in user_data:
             raise ValueError("user_id is required for new user creation")
 
         # Merge with default values
         user_profile = {**self.default_user_data, **user_data}
-        
+
         # Add user to encoder if not exists
-        if not hasattr(self.user_id_encoder, 'classes_'):
+        if not hasattr(self.user_id_encoder, "classes_"):
             self.user_id_encoder.fit([self.unknown_user_id])
-        
-        if user_data['user_id'] not in self.user_id_encoder.classes_:
-            new_classes = np.append(self.user_id_encoder.classes_, [user_data['user_id']])
+
+        if user_data["user_id"] not in self.user_id_encoder.classes_:
+            new_classes = np.append(
+                self.user_id_encoder.classes_, [user_data["user_id"]]
+            )
             self.user_id_encoder.classes_ = new_classes
-        
+
         return user_profile
 
     def record_user_interaction(self, user_id, interaction_data):
         """
         Record a user interaction with the system
-        
+
         Args:
             user_id (str): User identifier
             interaction_data (dict): Dictionary containing interaction information
-                Required keys: music, artist_name, genre
-                Optional keys: plays, duration, release_year
+                Required keys: music, artist, genre
+                Optional keys: playcount, duration_ms, release_year
         Returns:
             pd.DataFrame: Processed interaction data ready for model input
         """
         # Validate required fields
-        required_fields = ['music', 'artist_name', 'genre']
+        required_fields = ["name", "artist", "genre"]
         if not all(field in interaction_data for field in required_fields):
             raise ValueError(f"Missing required fields: {required_fields}")
-            
+
         # Create DataFrame with single interaction
-        interaction_df = pd.DataFrame({
-            'user_id': [user_id],
-            'music': [interaction_data['music']],
-            'artist_name': [interaction_data['artist_name']],
-            'genre': [interaction_data['genre']],
-            'plays': [interaction_data.get('plays', 1)],
-            'duration': [interaction_data.get('duration', 0)],
-            'release_year': [interaction_data.get('release_year', 2023)],
-        })
-        
+        interaction_df = pd.DataFrame(
+            {
+                "user_id": [user_id],
+                "music": [interaction_data["name"]],
+                "artist": [interaction_data["artist"]],
+                "genre": [interaction_data["genre"]],
+                "playcount": [interaction_data.get("playcount", 1)],
+                "duration_ms": [interaction_data.get("duration_ms", 0)],
+                "year": [interaction_data.get("year", 2023)],
+            }
+        )
+
         # Add default values for required numerical columns
         for col in self.NUMERICAL_COLS:
             if col not in interaction_df.columns:
                 interaction_df[col] = 0.0
-                
+
         return interaction_df
 
     def update_encoders_with_new_data(self, new_data):
         """
         Update encoders with new data without forgetting existing encodings
-        
+
         Args:
             new_data (pd.DataFrame): New data to incorporate
         """
         for column, encoder in [
-            ('user_id', self.user_id_encoder),
-            ('gender', self.gender_encoder)
+            ("user_id", self.user_id_encoder),
+            ("gender", self.gender_encoder),
         ]:
             if column in new_data.columns:
                 current_classes = encoder.classes_
                 new_classes = new_data[column].unique()
-                combined_classes = np.unique(np.concatenate([current_classes, new_classes]))
+                combined_classes = np.unique(
+                    np.concatenate([current_classes, new_classes])
+                )
                 encoder.classes_ = combined_classes
+
 
 # Add this check in your preprocessing pipeline
 def validate_user_ids(data):

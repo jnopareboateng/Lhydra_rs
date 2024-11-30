@@ -305,6 +305,10 @@ class DataPreprocessor:
         )
 
     def save_preprocessors(self, directory="models/"):
+        # Create directory if it doesn't exist
+        import os
+        os.makedirs(directory, exist_ok=True)
+        
         preprocessors = {
             "user_id_encoder": self.user_id_encoder,
             "gender_encoder": self.gender_encoder,
