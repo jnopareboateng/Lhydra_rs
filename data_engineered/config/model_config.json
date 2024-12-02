@@ -1,0 +1,16 @@
+{
+    "learning_rate": 0.001,
+    "weight_decay": 1e-05,
+    "epochs": 100,
+    "batch_size": 32,
+    "embedding_dim": 64,
+    "model_dir": "models",
+    "hidden_layers": [
+        256,
+        128,
+        64
+    ],
+    "dropout": 0.3,
+    "early_stopping_patience": 10,
+    "max_grad_norm": 1.0
+}

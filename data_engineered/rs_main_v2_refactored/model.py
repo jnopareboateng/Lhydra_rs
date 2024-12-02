@@ -4,19 +4,19 @@ import torch.nn.functional as F
 
 
 class EnhancedListNetLoss(nn.Module):
-    def __init__(self, k=10, ils_weight=0.1, temperature=1.0):
+    def __init__(self, k=10, ils_weight=0.1, temperature = 1):
         """
         Enhanced ListNet Loss with Intra-List Similarity regularization
 
         Args:
             k (int): Top-k items to consider
-            ils_weight (float): Weight for the ILS regularization term
-            temperature (float): Temperature for similarity scaling
+            temperature (float): Temperature for the similarity matrix
         """
         super(EnhancedListNetLoss, self).__init__()
         self.k = k
         self.ils_weight = ils_weight
         self.temperature = temperature
+        self.mse = nn.MSELoss()
 
     def compute_similarity_matrix(self, features):
         """

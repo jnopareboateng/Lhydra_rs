@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OrdinalEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import RobustScaler
 
 
 class DataPreprocessor:
@@ -42,7 +43,7 @@ class DataPreprocessor:
         self.genre_tfidf_vectorizer = TfidfVectorizer(max_features=max_genre_features)
         self.music_tfidf_vectorizer = TfidfVectorizer(max_features=max_music_features)
         self.release_year_encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)  # Added release year encoder
-        self.scaler = StandardScaler()
+        self.scaler = RobustScaler()
         self.unknown_user_id = "unknown_user"
         self.default_user_data = {
             'age': 25,  # Default age
@@ -252,17 +253,19 @@ class DataPreprocessor:
         return data_encoded
 
     def feature_engineering(self, data_encoded):
-        """
-        Modified to handle already preprocessed numerical features and ensure numeric types
-        """
-        # Convert numerical columns to float32
-        for col in self.NUMERICAL_COLS:
-            if col not in data_encoded.columns:
-                raise ValueError(f"Missing numerical column: {col}")
-            # Convert to numeric, replacing any non-numeric values with NaN
-            data_encoded[col] = pd.to_numeric(data_encoded[col], errors='coerce')
-            # Fill NaN values with 0 or another appropriate value
-            data_encoded[col] = data_encoded[col].fillna(0).astype(np.float32)
+        """Scale numerical features with RobustScaler to handle outliers"""
+        # Scale numerical features
+        data_encoded[self.NUMERICAL_COLS] = self.scaler.fit_transform(
+            data_encoded[self.NUMERICAL_COLS]
+        )
+        
+        # Normalize plays (target) separately
+        if "plays" in data_encoded.columns:
+            target = data_encoded["plays"]
+            # Log transform and scale to [0,1] range
+            target = np.log1p(target)
+            target = (target - target.min()) / (target.max() - target.min())
+            data_encoded["plays"] = target
         
         return data_encoded
 

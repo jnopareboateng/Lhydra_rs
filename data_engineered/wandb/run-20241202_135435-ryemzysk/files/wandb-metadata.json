@@ -1,0 +1,42 @@
+{
+  "os": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "python": "3.9.20",
+  "startedAt": "2024-12-02T13:54:35.807894Z",
+  "program": "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py",
+  "codePath": "data_engineered/rs_main_v2_refactored/train_v2.py",
+  "git": {
+    "remote": "https://github.com/jnopareboateng/Lhydra_rs.git",
+    "commit": "6ffd279c5ccb649fd2046c848c46d8b5dbcee40c"
+  },
+  "email": "zahemen9900@gmail.com",
+  "root": "/home/josh/Lhydra_rs/data_engineered",
+  "host": "josh",
+  "username": "josh",
+  "executable": "/home/josh/anaconda3/envs/ReNeLLM/bin/python",
+  "codePathLocal": "rs_main_v2_refactored/train_v2.py",
+  "cpu_count": 6,
+  "cpu_count_logical": 12,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "1081101176832",
+      "used": "104444841984"
+    }
+  },
+  "memory": {
+    "total": "16648417280"
+  },
+  "cpu": {
+    "count": 6,
+    "countLogical": 12
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+      "memoryTotal": "4294967296",
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.7"
+}

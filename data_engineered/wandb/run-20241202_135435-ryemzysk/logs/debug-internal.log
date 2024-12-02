@@ -1,0 +1,16 @@
+{"time":"2024-12-02T13:54:35.808922097Z","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-02T13:54:35.808938715Z","level":"INFO","msg":"created symlink","path":"/home/josh/Lhydra_rs/data_engineered/wandb/run-20241202_135435-ryemzysk/logs/debug-core.log"}
+{"time":"2024-12-02T13:54:36.515146492Z","level":"INFO","msg":"created new stream","id":"ryemzysk"}
+{"time":"2024-12-02T13:54:36.515188727Z","level":"INFO","msg":"stream: started","id":"ryemzysk"}
+{"time":"2024-12-02T13:54:36.515225288Z","level":"INFO","msg":"writer: Do: started","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:36.515261511Z","level":"INFO","msg":"handler: started","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:36.515303042Z","level":"INFO","msg":"sender: started","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:37.041203844Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-02T13:54:38.338776645Z","level":"INFO","msg":"stream: closing","id":"ryemzysk"}
+{"time":"2024-12-02T13:54:38.33879671Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-02T13:54:38.339230171Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-02T13:54:39.406499393Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-02T13:54:39.693177912Z","level":"INFO","msg":"handler: closed","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:39.693205951Z","level":"INFO","msg":"writer: Close: closed","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:39.693298706Z","level":"INFO","msg":"sender: closed","stream_id":"ryemzysk"}
+{"time":"2024-12-02T13:54:39.693304981Z","level":"INFO","msg":"stream: closed","id":"ryemzysk"}

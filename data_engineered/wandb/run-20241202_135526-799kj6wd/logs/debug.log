@@ -1,0 +1,32 @@
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Current SDK version is 0.18.7
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Configure stats pid to 311528
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Loading settings from /home/josh/.config/wandb/settings
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Loading settings from /home/josh/Lhydra_rs/data_engineered/wandb/settings
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Loading settings from environment variables: {}
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Applying setup settings: {'mode': None, '_disable_service': None}
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Inferring run settings from compute environment: {'program_relpath': 'data_engineered/rs_main_v2_refactored/train_v2.py', 'program_abspath': '/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py', 'program': '/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py'}
+2024-12-02 13:55:26,146 INFO    MainThread:311528 [wandb_setup.py:_flush():79] Applying login settings: {}
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:_log_setup():533] Logging user logs to /home/josh/Lhydra_rs/data_engineered/wandb/run-20241202_135526-799kj6wd/logs/debug.log
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:_log_setup():534] Logging internal logs to /home/josh/Lhydra_rs/data_engineered/wandb/run-20241202_135526-799kj6wd/logs/debug-internal.log
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:init():619] calling init triggers
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:init():626] wandb.init called with sweep_config: {}
+config: {'batch_size': 512, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'epochs': 100, 'patience': 10, 'embedding_dim': 64, 'model_dir': 'models', 'hidden_layers': [256, 128, 64], 'dropout': 0.3}
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:init():669] starting backend
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [wandb_init.py:init():673] sending inform_init request
+2024-12-02 13:55:26,147 INFO    MainThread:311528 [backend.py:_multiprocessing_setup():104] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-12-02 13:55:26,148 INFO    MainThread:311528 [wandb_init.py:init():686] backend started and connected
+2024-12-02 13:55:26,149 INFO    MainThread:311528 [wandb_init.py:init():781] updated telemetry
+2024-12-02 13:55:26,158 INFO    MainThread:311528 [wandb_init.py:init():814] communicating run to backend with 90.0 second timeout
+2024-12-02 13:55:26,709 INFO    MainThread:311528 [wandb_init.py:init():867] starting run threads in backend
+2024-12-02 13:55:26,808 INFO    MainThread:311528 [wandb_run.py:_console_start():2456] atexit reg
+2024-12-02 13:55:26,808 INFO    MainThread:311528 [wandb_run.py:_redirect():2305] redirect: wrap_raw
+2024-12-02 13:55:26,808 INFO    MainThread:311528 [wandb_run.py:_redirect():2370] Wrapping output streams.
+2024-12-02 13:55:26,808 INFO    MainThread:311528 [wandb_run.py:_redirect():2395] Redirects installed.
+2024-12-02 13:55:26,809 INFO    MainThread:311528 [wandb_init.py:init():911] run started, returning control to user process
+2024-12-02 13:55:51,085 INFO    MainThread:311528 [wandb_run.py:_finish():2155] finishing run zahemen9900-ai/music-recommender/799kj6wd
+2024-12-02 13:55:51,085 INFO    MainThread:311528 [wandb_run.py:_atexit_cleanup():2420] got exitcode: 0
+2024-12-02 13:55:51,085 INFO    MainThread:311528 [wandb_run.py:_restore():2402] restore
+2024-12-02 13:55:51,085 INFO    MainThread:311528 [wandb_run.py:_restore():2408] restore done
+2024-12-02 13:55:55,294 INFO    MainThread:311528 [wandb_run.py:_footer_history_summary_info():3960] rendering history
+2024-12-02 13:55:55,294 INFO    MainThread:311528 [wandb_run.py:_footer_history_summary_info():3992] rendering summary
+2024-12-02 13:55:55,298 INFO    MainThread:311528 [wandb_run.py:_footer_sync_info():3921] logging synced files

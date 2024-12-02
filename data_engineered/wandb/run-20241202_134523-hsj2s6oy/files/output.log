@@ -1,0 +1,32 @@
+/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/optim/lr_scheduler.py:60: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+INFO:__main__:Training on device: cuda
+Training:   0%|                                                                                             | 0/18 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py", line 310, in <module>
+    main()
+  File "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py", line 305, in main
+    trainer.train()
+  File "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py", line 215, in train
+    train_loss = self.train_epoch()
+  File "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py", line 182, in train_epoch
+    prediction = self.model(batch)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/train_v2.py", line 142, in forward
+    x = self.fc_layers(combined)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/container.py", line 219, in forward
+    input = module(input)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/josh/anaconda3/envs/ReNeLLM/lib/python3.9/site-packages/torch/nn/modules/linear.py", line 117, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (512x384 and 320x256)

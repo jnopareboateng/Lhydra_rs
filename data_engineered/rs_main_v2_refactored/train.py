@@ -21,6 +21,7 @@ SCHEDULER_PATIENCE = 2
 SCHEDULER_FACTOR = 0.5
 SCHEDULER_MIN_LR = 1e-4
 L2_LAMBDA = 1e-4
+ILS_WEIGHT = 0.1  # You can adjust this value based on your needs
 
 # Add at the top with other constants
 NUMERICAL_COLS = [
@@ -362,7 +363,7 @@ def main():
         )
 
         # Define loss function
-        criterion = EnhancedListNetLoss(k=10)
+        criterion = EnhancedListNetLoss(k=10, ils_weight=ILS_WEIGHT)
 
         early_stopping = EarlyStopping(
             patience=EARLY_STOPPING_PATIENCE,
