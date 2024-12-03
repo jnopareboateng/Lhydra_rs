@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, n
 from typing import Dict, List, Tuple
 import json
 import os
-from train_v2 import HybridMusicRecommender, MusicRecommenderDataset
+from rs_main_v2_refactored.train_model import HybridMusicRecommender, MusicRecommenderDataset
 from torch.utils.data import DataLoader
 import logging
 from sklearn.preprocessing import LabelEncoder
@@ -363,11 +363,11 @@ class ModelEvaluator:
 
 def main():
     # Load test data
-    test_data = pd.read_csv('/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/data/test_data.csv')
+    test_data = pd.read_csv('/home/josh/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/data/test_data.csv')
     
     # Initialize evaluator
     evaluator = ModelEvaluator(
-        model_path='checkpoints/best_model.pt',
+        model_path='checkpoints/best_model.pth',
         test_data=test_data,
         batch_size=32
     )

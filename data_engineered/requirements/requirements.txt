@@ -1,0 +1,19 @@
+# PyTorch Requirements
+torch==2.4.1
+# CUDA Available: True
+# CUDA Version: 12.4
+
+# Project Dependencies
+matplotlib==3.9.2
+numpy==2.0.1
+pandas==2.2.3
+scikit-learn==1.5.2
+scipy==1.13.1
+seaborn==0.13.2
+tqdm==4.65.0
+
+# Development Dependencies
+jupyter
+black
+flake8
+pytest

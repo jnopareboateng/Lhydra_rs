@@ -1,492 +1,265 @@
 import torch
+import torch.nn as nn
 import pandas as pd
 import numpy as np
-from preprocessing import DataPreprocessor
-from model import HybridRecommender
-import librosa
-import sys
+import json
+import logging
+from sklearn.preprocessing import LabelEncoder
+from torch.utils.data import DataLoader
+from rs_main_v2_refactored.train_model import HybridMusicRecommender, MusicRecommenderDataset
 
-# Add missing NUMERICAL_COLS definition
-NUMERICAL_COLS = [
-    "age",
-    "duration",
-    "acousticness",
-    "key",
-    "mode",
-    "speechiness",
-    "instrumentalness",
-    "liveness",
-    "tempo",
-    "time_signature",
-    "explicit",
-    "music_age",
-    "energy_loudness",
-    "dance_valence"
-]
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Add this constant at the top of the file
-EMBEDDING_DIM = 32  # Must match the training configuration
+# Add safe globals for numpy types
+torch.serialization.add_safe_globals([
+    np._core.multiarray.scalar,  # Allow numpy scalar types
+    np.ndarray,  # Allow numpy arrays
+    np.dtype,    # Allow numpy dtypes
+    np.float64,  # Allow specific numpy types
+    np.float32,
+    np.int64,
+    np.int32
+])
 
-def load_model_and_preprocessor(model_path, preprocessor_path):
-    """Load trained model and preprocessor"""
-    import os
-    
-    # Check if model file exists
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found at {model_path}. Please train the model first.")
-
-    # Check if preprocessor directory exists and contains required files
-    preprocessor_files = [
-        "user_id_encoder.pkl",
-        "gender_encoder.pkl", 
-        "artist_tfidf_vectorizer.pkl",
-        "genre_tfidf_vectorizer.pkl",
-        "music_tfidf_vectorizer.pkl",
-        "release_year_encoder.pkl",
-        "scaler.pkl"
-    ]
-    
-    for file in preprocessor_files:
-        file_path = os.path.join(preprocessor_path, file)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(
-                f"Preprocessor file {file} not found at {preprocessor_path}. "
-                "Please train the model first."
-            )
-
-    # Load preprocessor
-    preprocessor = DataPreprocessor()
-    try:
-        preprocessor.load_preprocessors(preprocessor_path)
-    except Exception as e:
-        raise RuntimeError(f"Error loading preprocessors: {str(e)}")
-
-    # Load model
-    try:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = HybridRecommender(
-            num_users=len(preprocessor.user_id_encoder.classes_),
-            num_genders=len(preprocessor.gender_encoder.classes_),
-            num_music_items=len([col for col in preprocessor.music_tfidf_vectorizer.get_feature_names_out()]),
-            num_genres=len([col for col in preprocessor.genre_tfidf_vectorizer.get_feature_names_out()]),
-            num_artist_features=len([col for col in preprocessor.artist_tfidf_vectorizer.get_feature_names_out()]),
-            num_numerical_features=len(NUMERICAL_COLS),
-            num_release_years=len(preprocessor.release_year_encoder.categories_[0]),
-            embedding_dim=EMBEDDING_DIM
-        )
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        model = model.to(device)
-        model.eval()
-    except Exception as e:
-        raise RuntimeError(f"Error loading model: {str(e)}")
-
-    return model, preprocessor
-
-
-def prepare_inference_features(data, preprocessor):
-    """
-    Prepare features for inference using the same preprocessing as training.
-
-    Args:
-        data (pd.DataFrame): Raw input data
-        preprocessor (DataPreprocessor): Trainedc preprocessor
-
-    Returns:
-        dict: Processed features ready for model input
-    """
-    # Encode features using the preprocessor
-    data_encoded =preprocessor.encode_features_transform(data)
-    features = preprocessor.feature_engineering(data_encoded)
-
-    # Ensure numerical features are floats and have correct shape
-    numerical_features = data[NUMERICAL_COLS].values.astype(np.float32)
-    if len(numerical_features.shape) == 1:
-        numerical_features = numerical_features.reshape(-1, len(NUMERICAL_COLS))
-
-    return features
-
-
-def get_recommendations(model, user_data, preprocessor, device, top_k=10):
-    """
-    Generate recommendations for a user.
-
-    Args:
-        model (HybridRecommender): Trained model
-        user_data (pd.DataFrame): User's data including all necessary columns
-        preprocessor (DataPreprocessor): Trained preprocessor
-        device (torch.device): Device to run inference on
-        top_k (int): Number of recommendations to return
-
-    Returns:
-        pd.DataFrame: Top-k recommendations with scores
-    """
-    model.eval()
-
-    # Prepare features
-    features = prepare_inference_features(user_data, preprocessor)
-
-    # Convert features to tensors
-    tensor_data = {
-        "user_id": torch.tensor(features['user_id_encoded'].values, dtype=torch.long).to(device),
-        "gender_ids": torch.tensor(features['gender_encoded'].values, dtype=torch.long).to(device),
-        "genre_features": torch.tensor(
-            features[[col for col in features.columns if col.startswith('genre_tfidf_')]].values,
-            dtype=torch.float32
-        ).to(device),
-        "artist_features": torch.tensor(
-            features[[col for col in features.columns if col.startswith('artist_tfidf_')]].values,
-            dtype=torch.float32
-        ).to(device),
-        "music_features": torch.tensor(
-            features[[col for col in features.columns if col.startswith('music_tfidf_')]].values,
-            dtype=torch.float32
-        ).to(device),
-        "numerical_features": torch.tensor(
-            features[NUMERICAL_COLS].values,
-            dtype=torch.float32
-        ).to(device),
-        "release_years": torch.tensor(features['release_year_encoded'].values, dtype=torch.long).to(device),
-    }
-
-    # Get predictions
-    with torch.no_grad():
-        predictions = model(
-            tensor_data["user_id"],
-            tensor_data["artist_features"],
-            tensor_data["gender_ids"],
-            tensor_data["music_features"],
-            tensor_data["genre_features"],
-            tensor_data["numerical_features"],
-            tensor_data["release_years"]
-        )
-
-    # Convert predictions to numpy
-    predictions = predictions.cpu().numpy().flatten()
-
-    # Get top-k indices
-    top_indices = np.argsort(predictions)[-top_k:][::-1]
-
-    # Create recommendations dataframe
-    recommendations = user_data.iloc[top_indices].copy()
-    recommendations["score"] = predictions[top_indices]
-
-    return recommendations[["artist_name", "music", "genre", "score"]]
-
-
-def extract_audio_features(audio_path):
-    """Extract audio features from music file"""
-    y, sr = librosa.load(audio_path, mono=True)
-    features = {}
-    
-    for col in NUMERICAL_COLS:
-        if col in ["age", "music_age", "explicit"]:
-            features[col] = 0  # Default values for non-audio features
-        else:
-            # Extract relevant audio features
-            features[col] = extract_specific_audio_feature(y, sr, col)
-            
-    return features
-
-def extract_specific_audio_feature(y, sr, feature_name):
-    """Extract specific audio feature based on feature name."""
-    feature_extractors = {
-        "duration": lambda y, sr: librosa.get_duration(y=y, sr=sr),
-        "acousticness": lambda y, sr: np.mean(librosa.feature.rms(y=y)),
-        "key": lambda y, sr: np.argmax(librosa.feature.chroma_stft(y=y, sr=sr).mean(axis=1)),
-        "mode": lambda y, sr: 1 if np.mean(librosa.feature.chroma_cqt(y=y, sr=sr)) > 0 else 0,
-        "speechiness": lambda y, sr: np.mean(librosa.feature.mfcc(y=y, sr=sr)),
-        "instrumentalness": lambda y, sr: np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr)),
-        "liveness": lambda y, sr: np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr)),
-        "tempo": lambda y, sr: librosa.beat.tempo(y=y, sr=sr)[0],
-        "time_signature": lambda y, sr: 4,  # Default value
-        "energy_loudness": lambda y, sr: np.mean(librosa.feature.rms(y=y)),
-        "dance_valence": lambda y, sr: np.mean(librosa.feature.spectral_contrast(y=y, sr=sr))
-    }
-    
-    extractor = feature_extractors.get(feature_name)
-    return extractor(y, sr) if extractor else 0
-
-
-def prepare_user_data(user_input, preprocessor, audio_features=None):
-    """
-    Prepare user data for inference, handling both existing and new users
-    
-    Args:
-        user_input (dict): User input data
-        preprocessor (DataPreprocessor): Trained preprocessor
-        audio_features (dict, optional): Audio features if available
-    
-    Returns:
-        pd.DataFrame: Processed user data ready for model input
-    """
-    # Create or get user profile
-    user_profile = preprocessor.create_new_user(user_input)
-    
-    # Record interaction
-    interaction_data = {
-        'music': user_input['music'],
-        'artist_name': user_input['artist'],
-        'genre': user_input['genre'],
-        'release_year': user_input.get('release_year', 2020),
-    }
-    
-    # Add audio features if available
-    if audio_features:
-        interaction_data.update(audio_features)
-    
-    # Create DataFrame with interaction
-    user_data = preprocessor.record_user_interaction(
-        user_input['user_id'], 
-        interaction_data
-    )
-    
-    # Add user profile information
-    user_data['age'] = user_profile['age']
-    user_data['gender'] = user_profile['gender']
-    
-    return user_data
-
-
-def get_personalized_recommendations(
-    model_path, 
-    preprocessor_path, 
-    user_input, 
-    top_k=10
-):
-    """
-    Get personalized music recommendations with robust device handling
-    """
-    try:
-        # Force CPU if CUDA has issues
-        device = torch.device("cpu")
+class RecommendationGenerator:
+    def __init__(self, model_path: str, catalog_data: pd.DataFrame):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.catalog_data = catalog_data
         
-        # Load model and preprocessor
-        model, preprocessor = load_model_and_preprocessor(model_path, preprocessor_path)
-        model = model.to(device)
-        model.eval()
-
-        # Prepare user data
-        user_data = prepare_user_data(user_input, preprocessor)
-        
-        # Verify data dimensions
-        if user_data.empty:
-            raise ValueError("No valid user data generated")
-
-        # Process features with dimension checks
-        features = prepare_inference_features(user_data, preprocessor)
-        
-        # Convert to tensors with safety checks
-        tensor_data = {}
+        # Load model checkpoint with safety settings
+        logger.info(f"Loading model from {model_path}")
         try:
-            tensor_data = {
-                "user_id": torch.tensor(features['user_id_encoded'].values, dtype=torch.long).to(device),
-                "gender_ids": torch.tensor(features['gender_encoded'].values, dtype=torch.long).to(device),
-                "genre_features": torch.tensor(
-                    features[[col for col in features.columns if col.startswith('genre_tfidf_')]].values,
-                    dtype=torch.float32
-                ).to(device),
-                "artist_features": torch.tensor(
-                    features[[col for col in features.columns if col.startswith('artist_tfidf_')]].values,
-                    dtype=torch.float32
-                ).to(device),
-                "music_features": torch.tensor(
-                    features[[col for col in features.columns if col.startswith('music_tfidf_')]].values,
-                    dtype=torch.float32
-                ).to(device),
-                "numerical_features": torch.tensor(
-                    features[NUMERICAL_COLS].values,
-                    dtype=torch.float32
-                ).to(device),
-                "release_years": torch.tensor(features['release_year_encoded'].values, dtype=torch.long).to(device)
-            }
+            self.checkpoint = torch.load(model_path, map_location=self.device)
+            logger.info("Model loaded successfully")
         except Exception as e:
-            raise ValueError(f"Error creating tensors: {str(e)}")
-
-        # Verify tensor dimensions
-        expected_dims = model.get_expected_dimensions()
-        for key, tensor in tensor_data.items():
-            if tensor.shape[1] != expected_dims[key]:
-                raise ValueError(f"Dimension mismatch for {key}: expected {expected_dims[key]}, got {tensor.shape[1]}")
-
-        # Get predictions with error handling
-        with torch.no_grad():
+            logger.error(f"Error loading model: {str(e)}")
+            raise
+        
+        # Get config and encoders from the checkpoint
+        self.config = self.checkpoint.get('config', {})
+        if not self.config:
+            # Try loading from config file as fallback
             try:
-                predictions = model(
-                    tensor_data["user_id"],
-                    tensor_data["artist_features"],
-                    tensor_data["gender_ids"],
-                    tensor_data["music_features"],
-                    tensor_data["genre_features"],
-                    tensor_data["numerical_features"],
-                    tensor_data["release_years"]
-                )
-            except RuntimeError as e:
-                if "CUDA" in str(e):
-                    print("CUDA error encountered, falling back to CPU...")
-                    model = model.cpu()
-                    predictions = model(
-                        *[t.cpu() for t in tensor_data.values()]
-                    )
-                else:
-                    raise
-
-        # Process predictions safely
-        predictions = predictions.cpu().numpy().flatten()
-        if len(predictions) < top_k:
-            raise ValueError(f"Not enough predictions generated: {len(predictions)} < {top_k}")
-            
-        top_indices = np.argsort(predictions)[-top_k:][::-1]
+                with open('/home/josh/Lhydra_rs/data_engineered/config/model_config.json', 'r') as f:
+                    self.config = json.load(f)
+            except FileNotFoundError:
+                logger.warning("Config file not found, using default values")
+                self.config = {
+                    'embedding_dim': 64,
+                    'hidden_layers': [256, 128, 64],
+                    'dropout': 0.3
+                }
         
-        # Create recommendations with bounds checking
-        if max(top_indices) >= len(user_data):
-            raise IndexError("Prediction indices out of bounds")
-            
-        recommendations = user_data.iloc[top_indices].copy()
-        recommendations["score"] = predictions[top_indices]
+        # Load encoders with safety settings
+        torch.serialization.add_safe_globals([LabelEncoder])
+        self.encoders = torch.load('/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/data/data_encoders.pt', weights_only=False)
         
-        return recommendations[["artist_name", "music", "genre", "score"]]
-
-    except Exception as e:
-        print(f"Error in personalized recommendations: {str(e)}")
-        return pd.DataFrame(columns=["artist_name", "music", "genre", "score"])
-
-
-def get_general_recommendations(model, preprocessor, sample_size=1000, top_k=10):
-    """Generate general recommendations using trained model"""
-    try:
-        # Load the data with explicit path handling
-        data_path = "../../data/engineered_data.csv"
-        if not isinstance(data_path, (str, bytes)):
-            raise TypeError("Data path must be a string")
-            
-        data = preprocessor.load_data(data_path)
-        if data.empty:
-            raise ValueError("No data loaded")
+        # Initialize model
+        self.model = self._initialize_model()
         
-        # Take a random sample
-        sampled_data = data.sample(n=min(sample_size, len(data)), random_state=42)
+    def _initialize_model(self):
+        """Initialize and load the model from checkpoint."""
+        # Get dimensions from encoders
+        model = HybridMusicRecommender(
+            num_users=len(self.encoders['user_encoder'].classes_),
+            num_music=len(self.encoders['music_encoder'].classes_),
+            num_artists=len(self.encoders['artist_encoder'].classes_),
+            num_genres=len(self.encoders['genre_encoder'].classes_),
+            num_numerical=14,  # Number of numerical features
+            embedding_dim=64,  # Match the saved model's embedding dimension
+            layers=[256, 128, 64],  # Match the saved model's layer sizes
+            dropout=0.2
+        )
         
-        # Preprocess the sampled data
-        features = preprocessor.encode_features_transform(sampled_data)
-        features = preprocessor.feature_engineering(features)
+        # Load state dict from checkpoint
+        state_dict = self.checkpoint['model_state_dict']
+        model.load_state_dict(state_dict)
         
-        # Prepare tensor data
-        device = next(model.parameters()).device
-        tensor_data = {
-            "user_id": torch.tensor(features["user_id_encoded"].values, dtype=torch.long).to(device),
-            "artist_features": torch.tensor(
-                features[[col for col in features.columns if col.startswith("artist_tfidf_")]].values,
-                dtype=torch.float32
-            ).to(device),
-            "gender_ids": torch.tensor(features["gender_encoded"].values, dtype=torch.long).to(device),
-            "music_features": torch.tensor(
-                features[[col for col in features.columns if col.startswith("music_tfidf_")]].values,
-                dtype=torch.float32
-            ).to(device),
-            "genre_features": torch.tensor(
-                features[[col for col in features.columns if col.startswith("genre_tfidf_")]].values,
-                dtype=torch.float32
-            ).to(device),
-            "numerical_features": torch.tensor(
-                features[NUMERICAL_COLS].values,
-                dtype=torch.float32
-            ).to(device),
-            "release_years": torch.tensor(
-                features["release_year_encoded"].values,
-                dtype=torch.long
-            ).to(device)
-        }
-
-        # Generate predictions
+        # Move model to device and set to eval mode
+        model = model.to(self.device)
         model.eval()
+        
+        return model
+    
+    def generate_recommendations(self, user_info: dict, n_recommendations: int = 10) -> pd.DataFrame:
+        """
+        Generate music recommendations for a specific user.
+        
+        Args:
+            user_info: Dictionary containing user information (age, gender, user_id)
+            n_recommendations: Number of recommendations to generate
+            
+        Returns:
+            DataFrame containing recommended songs with predicted play counts
+        """
+        # Create a temporary DataFrame with all songs for the user
+        user_candidates = self.catalog_data.copy()
+        user_candidates['age'] = user_info['age']
+        user_candidates['gender'] = user_info['gender']
+        user_candidates['user_id'] = user_info['user_id']
+        
+        # Debug user encoding
+        try:
+            encoded_user = self.encoders['user_encoder'].transform([user_info['user_id']])[0]
+            print(f"User ID {user_info['user_id']} encoded as: {encoded_user}")
+        except:
+            print(f"Warning: User ID {user_info['user_id']} not found in encoder")
+            # Use a default encoding or handle unknown users
+            encoded_user = 0
+        
+        # Debug catalog data
+        print(f"\nCatalog Statistics:")
+        print(f"Total songs: {len(user_candidates)}")
+        print(f"Unique artists: {user_candidates['artist_name'].nunique()}")
+        print(f"Unique genres: {user_candidates['genre'].nunique()}")
+        
+        # Create dataset and dataloader
+        test_dataset = MusicRecommenderDataset(
+            user_candidates,
+            mode='test',
+            encoders=self.encoders
+        )
+        test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+        
+        # Generate predictions
+        predictions = []
+        indices = []
+        
         with torch.no_grad():
-            predictions = model(
-                tensor_data["user_id"],
-                tensor_data["artist_features"],
-                tensor_data["gender_ids"],
-                tensor_data["music_features"],
-                tensor_data["genre_features"],
-                tensor_data["numerical_features"],
-                tensor_data["release_years"]
-            )
-
-        # Convert predictions to numpy and get top-k
-        predictions_np = predictions.cpu().numpy().flatten()
-        top_indices = np.argsort(predictions_np)[-top_k:][::-1]
+            for i, batch in enumerate(test_loader):
+                batch = {k: v.to(self.device) for k, v in batch.items()}
+                pred = self.model(batch)
+                predictions.extend(pred.cpu().numpy())
+                indices.extend(range(i * test_loader.batch_size, 
+                                  min((i + 1) * test_loader.batch_size, len(test_dataset))))
         
         # Create recommendations DataFrame
-        recommendations = sampled_data.iloc[top_indices].copy()
-        recommendations["score"] = predictions_np[top_indices].astype(float)
+        recommendations = pd.DataFrame({
+            'music': user_candidates['music'].values[indices],
+            'artist_name': user_candidates['artist_name'].values[indices],
+            'genre': user_candidates['genre'].values[indices],
+            'predicted_plays': predictions
+        })
         
-        return recommendations[["artist_name", "music", "genre", "score"]]
+        # Convert predictions to scalar values
+        recommendations['predicted_plays'] = recommendations['predicted_plays'].apply(lambda x: float(x[0]))
+        
+        # Sort by predicted plays and get top N recommendations
+        recommendations = recommendations.sort_values('predicted_plays', ascending=False)
+        recommendations = recommendations.head(n_recommendations)
+        
+        # Debug predictions
+        print(f"\nPrediction Statistics:")
+        min_pred = recommendations['predicted_plays'].min()
+        max_pred = recommendations['predicted_plays'].max()
+        std_pred = recommendations['predicted_plays'].std()
+        print(f"Prediction range: {min_pred:.2f} to {max_pred:.2f}")
+        print(f"Prediction std: {std_pred:.2f}")
+        
+        # Print top recommendations with better formatting
+        print("\nTop 10 Recommended Songs:")
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        print(recommendations.to_string(index=False, float_format=lambda x: '{:.2f}'.format(x) if isinstance(x, (float, np.float32, np.float64)) else str(x)))
+        
+        return recommendations.reset_index(drop=True)
 
-    except Exception as e:
-        print(f"Error generating general recommendations: {str(e)}")
-        raise
-
-
-def get_user_input():
-    """Collect user information and preferences interactively"""
-    print("\nPlease enter your information:")
-    user_data = {
-        "user_id": input("Enter user ID (or press Enter for new ID): ") or f"new_user_{np.random.randint(10000)}",
-        "age": int(input("Enter your age: ")),
-        "gender": input("Enter your gender (M/F/O): ").upper(),
-        "artist": input("Enter a favorite artist: "),
-        "music": input("Enter a favorite song: "),
-        "genre": input("Enter preferred genre: "),
-        "release_year": int(input("Enter song release year: "))
-    }
-    return user_data
+class HybridMusicRecommender(nn.Module):
+    def __init__(self, num_users, num_music, num_artists, num_genres, num_numerical,
+                 embedding_dim=64, layers=[256, 128, 64], dropout=0.2):
+        super().__init__()
+        
+        # Embedding layers
+        self.user_embedding = nn.Embedding(num_users, embedding_dim)
+        self.music_embedding = nn.Embedding(num_music, embedding_dim)
+        self.artist_embedding = nn.Embedding(num_artists, embedding_dim)
+        self.genre_embedding = nn.Embedding(num_genres, embedding_dim)
+        
+        # Feature processing layers with residual connections
+        self.numerical_layer = nn.Sequential(
+            nn.Linear(num_numerical, embedding_dim),
+            nn.ReLU(),
+            nn.BatchNorm1d(embedding_dim)
+        )
+        
+        self.binary_layer = nn.Sequential(
+            nn.Linear(2, embedding_dim),
+            nn.ReLU(),
+            nn.BatchNorm1d(embedding_dim)
+        )
+        
+        # Calculate total input features
+        total_features = embedding_dim * 6  # 4 embeddings + numerical + binary
+        
+        # MLP layers with residual connections
+        self.fc_layers = nn.ModuleList()
+        input_dim = total_features
+        
+        for layer_size in layers:
+            self.fc_layers.append(nn.ModuleDict({
+                'main': nn.Sequential(
+                    nn.Linear(input_dim, layer_size),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(layer_size),
+                    nn.Dropout(dropout)
+                ),
+                'residual': nn.Linear(input_dim, layer_size) if input_dim != layer_size else None
+            }))
+            input_dim = layer_size
+        
+        self.final_layer = nn.Linear(layers[-1], 1)
+    
+    def forward(self, batch):
+        # Get embeddings
+        user_emb = self.user_embedding(batch['user_id'])
+        music_emb = self.music_embedding(batch['music_id'])
+        artist_emb = self.artist_embedding(batch['artist_id'])
+        genre_emb = self.genre_embedding(batch['genre_id'])
+        
+        # Process numerical features
+        numerical = self.numerical_layer(batch['numerical_features'])
+        
+        # Process binary features
+        binary = torch.stack([batch['explicit'], batch['gender']], dim=1).float()
+        binary = self.binary_layer(binary)
+        
+        # Concatenate all features
+        x = torch.cat([
+            user_emb, music_emb, artist_emb, genre_emb, numerical, binary
+        ], dim=1)
+        
+        # Apply MLP layers with residual connections
+        for layer in self.fc_layers:
+            identity = x
+            x = layer['main'](x)
+            if layer['residual'] is not None:
+                x = x + layer['residual'](identity)
+        
+        # Final prediction
+        return self.final_layer(x)
 
 def main():
-    try:
-        print("Loading model and preprocessor...")
-        model, preprocessor = load_model_and_preprocessor(
-            model_path="models/best_model.pth",
-            preprocessor_path="models/"
-        )
-        print("Model and preprocessor loaded successfully!")
-
-        while True:
-            print("\nSelect an option:")
-            print("1. Get general recommendations")
-            print("2. Get personalized recommendations")
-            print("3. Exit")
-            
-            choice = input("\nEnter your choice (1-3): ")
-            
-            if choice == "1":
-                print("\nGenerating general recommendations...")
-                recommendations = get_general_recommendations(model, preprocessor)
-                print("\nTop 10 General Recommendations:")
-                pd.set_option('display.float_format', '{:.4f}'.format)
-                print(recommendations)
-                
-            elif choice == "2":
-                # Get user input
-                user_data = get_user_input()
-                
-                # Get personalized recommendations
-                print("\nGenerating personalized recommendations...")
-                recommendations = get_personalized_recommendations(
-                    model_path="models/best_model.pth",
-                    preprocessor_path="models/",
-                    user_input=user_data
-                )
-                print("\nTop 10 Personalized Recommendations:")
-                print(recommendations)
-                
-            elif choice == "3":
-                print("\nExiting...")
-                break
-                
-            else:
-                print("\nInvalid choice. Please try again.")
-
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        sys.exit(1)
+    # Example usage
+    model_path =  '/home/josh/Lhydra_rs/data_engineered/checkpoints/best_model.pth'
+    catalog_data = pd.read_csv('/home/josh/Lhydra_rs/data_engineered/rs_main_v2_refactored/data/test_data.csv')  # Your music catalog
+    
+    # Initialize recommendation generator
+    recommender = RecommendationGenerator(model_path, catalog_data)
+    
+    # Example user
+    user_info = {
+        'age': 50,
+        'gender': 'M',
+        'user_id': '43c33bc8917f644809b960cca4aad47030703bdc9e1a526d90a4636627ef0038'
+    }
+    
+    # Generate recommendations
+    recommendations = recommender.generate_recommendations(user_info, n_recommendations=10)
+    
+    print("\nTop 10 Recommended Songs:")
+    print(recommendations.to_string(index=False))
 
 if __name__ == "__main__":
     main()
