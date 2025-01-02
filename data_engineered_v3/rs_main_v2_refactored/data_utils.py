@@ -58,5 +58,5 @@ def split_and_save_data(data_path: str, test_size: float = 0.2, random_state: in
     return train_path, test_path, encoder_path
 
 if __name__ == "__main__":
-    data_path = '/home/josh/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/data/engineered_data.csv'
+    data_path = '/home/justjosh/recommeders/Lhydra_rs/data/o2_data.csv'
     train_path, test_path, encoder_path = split_and_save_data(data_path)

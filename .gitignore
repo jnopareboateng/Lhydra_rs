@@ -27,3 +27,5 @@ msd_full_data.csv
 train_data.csv
 val_data.csv
 *.png
+Music Info.csv
+User Listening History.csv
