@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, n
 from typing import Dict, List, Tuple
 import json
 import os
-from train_v2 import HybridMusicRecommender, MusicRecommenderDataset
+from train_model import HybridMusicRecommender, MusicRecommenderDataset
 from torch.utils.data import DataLoader
 import logging
 from sklearn.preprocessing import LabelEncoder
@@ -46,7 +46,7 @@ class ModelEvaluator:
             num_music=len(self.encoders['music_encoder'].classes_),
             num_artists=len(self.encoders['artist_encoder'].classes_),
             num_genres=len(self.encoders['genre_encoder'].classes_),
-            num_numerical=14,  # Number of numerical features
+            num_numerical=13,  # Number of numerical features
             embedding_dim=self.config['embedding_dim'],
             layers=self.config['hidden_layers'],
             dropout=self.config['dropout']
@@ -78,7 +78,7 @@ class ModelEvaluator:
             for batch in self.test_loader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 pred = self.model(batch)
-                true_values.extend(batch['plays'].cpu().numpy())
+                true_values.extend(batch['playcount'].cpu().numpy())
                 predictions.extend(pred.cpu().numpy())
         
         true_values = np.array(true_values)
@@ -110,7 +110,7 @@ class ModelEvaluator:
             for batch in self.test_loader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 pred = self.model(batch)
-                true_values.extend(batch['plays'].cpu().numpy())
+                true_values.extend(batch['playcount'].cpu().numpy())
                 predictions.extend(pred.cpu().numpy())
         
         true_values = np.array(true_values)
@@ -143,7 +143,7 @@ class ModelEvaluator:
             for batch in self.test_loader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 pred = self.model(batch)
-                true_values.extend(batch['plays'].cpu().numpy())
+                true_values.extend(batch['playcount'].cpu().numpy())
                 predictions.extend(pred.cpu().numpy())
         
         true_values = np.array(true_values)
@@ -173,7 +173,7 @@ class ModelEvaluator:
             for batch in self.test_loader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 pred = self.model(batch)
-                true_values.extend(batch['plays'].cpu().numpy())
+                true_values.extend(batch['playcount'].cpu().numpy())
                 predictions.extend(pred.cpu().numpy())
         
         errors = np.array(predictions) - np.array(true_values)
@@ -198,7 +198,7 @@ class ModelEvaluator:
             for batch in self.test_loader:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 pred = self.model(batch)
-                true_values.extend(batch['plays'].cpu().numpy())
+                true_values.extend(batch['playcount'].cpu().numpy())
                 predictions.extend(pred.cpu().numpy())
         
         true_values = np.array(true_values)
@@ -311,7 +311,7 @@ class ModelEvaluator:
                 for batch in scenario_loader:
                     batch = {k: v.to(self.device) for k, v in batch.items()}
                     pred = self.model(batch)
-                    true_values.extend(batch['plays'].cpu().numpy())
+                    true_values.extend(batch['playcount'].cpu().numpy())
                     predictions.extend(pred.cpu().numpy())
             
             true_values = np.array(true_values)
@@ -363,7 +363,7 @@ class ModelEvaluator:
 
 def main():
     # Load test data
-    test_data = pd.read_csv('/home/josh/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/data/test_data.csv')
+    test_data = pd.read_csv('/mmfs1/projects/zubair.malik/francis.martinson/LHydra/data_engineered_v2/rs_main_v2_refactored/data/test_data.csv')
     
     # Initialize evaluator
     evaluator = ModelEvaluator(

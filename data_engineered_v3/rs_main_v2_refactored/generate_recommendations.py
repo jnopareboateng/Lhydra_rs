@@ -6,7 +6,7 @@ import json
 import logging
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
-from train_v2 import HybridMusicRecommender, MusicRecommenderDataset
+from train_model import HybridMusicRecommender, MusicRecommenderDataset
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -42,7 +42,7 @@ class RecommendationGenerator:
         if not self.config:
             # Try loading from config file as fallback
             try:
-                with open('/home/josh/Lhydra_rs/data_engineered_v3/config/model_config.json', 'r') as f:
+                with open('/home/josh/Lhydra_rs/data_engineered_v2/config/model_config.json', 'r') as f:
                     self.config = json.load(f)
             except FileNotFoundError:
                 logger.warning("Config file not found, using default values")
@@ -54,7 +54,7 @@ class RecommendationGenerator:
         
         # Load encoders with safety settings
         torch.serialization.add_safe_globals([LabelEncoder])
-        self.encoders = torch.load('/home/josh/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/data/data_encoders.pt', weights_only=False)
+        self.encoders = torch.load('/home/josh/Lhydra_rs/data_engineered_v2/rs_main_v2_refactored/data/data_encoders.pt', weights_only=False)
         
         # Initialize model
         self.model = self._initialize_model()
@@ -113,7 +113,7 @@ class RecommendationGenerator:
         print(f"\nCatalog Statistics:")
         print(f"Total songs: {len(user_candidates)}")
         print(f"Unique artists: {user_candidates['artist_name'].nunique()}")
-        print(f"Unique genres: {user_candidates['genre'].nunique()}")
+        print(f"Unique genres: {user_candidates['main_genre'].nunique()}")
         
         # Create dataset and dataloader
         test_dataset = MusicRecommenderDataset(
@@ -139,7 +139,7 @@ class RecommendationGenerator:
         recommendations = pd.DataFrame({
             'music': user_candidates['music'].values[indices],
             'artist_name': user_candidates['artist_name'].values[indices],
-            'genre': user_candidates['genre'].values[indices],
+            'genre': user_candidates['main_genre'].values[indices],
             'predicted_plays': predictions
         })
         
@@ -242,8 +242,8 @@ class HybridMusicRecommender(nn.Module):
 
 def main():
     # Example usage
-    model_path =  '/home/josh/Lhydra_rs/data_engineered_v3/checkpoints/best_model.pth'
-    catalog_data = pd.read_csv('/home/josh/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/data/test_data.csv')  # Your music catalog
+    model_path =  'checkpoints/best_model.pth'
+    catalog_data = pd.read_csv('data/test_data.csv')  # Your music catalog
     
     # Initialize recommendation generator
     recommender = RecommendationGenerator(model_path, catalog_data)

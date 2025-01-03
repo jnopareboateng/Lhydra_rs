@@ -14,7 +14,7 @@ class DataEncoder:
         self.numerical_features = [
             'age', 'duration', 'acousticness', 'key', 'mode', 'speechiness',
             'instrumentalness', 'liveness', 'tempo', 'time_signature',
-            'music_age', 'plays', 'energy_loudness', 'dance_valence'
+            'playcount', 'energy_loudness', 'dance_valence'
         ]
     
     def fit(self, df: pd.DataFrame) -> None:
@@ -22,7 +22,7 @@ class DataEncoder:
         self.user_encoder.fit(df['user_id'].values)
         self.music_encoder.fit(df['music_id'].values)
         self.artist_encoder.fit(df['artist_id'].values)
-        self.genre_encoder.fit(df['genre'].values)
+        self.genre_encoder.fit(df['main_genre'].values)
         self.scaler.fit(df[self.numerical_features].values)
     
     def transform(self, df: pd.DataFrame) -> Dict[str, np.ndarray]:
@@ -31,7 +31,7 @@ class DataEncoder:
             'users': self.user_encoder.transform(df['user_id'].values),
             'music': self.music_encoder.transform(df['music_id'].values),
             'artists': self.artist_encoder.transform(df['artist_id'].values),
-            'genres': self.genre_encoder.transform(df['genre'].values),
+            'genres': self.genre_encoder.transform(df['main_genre'].values),
             'numerical_features': self.scaler.transform(df[self.numerical_features].values)
         }
     

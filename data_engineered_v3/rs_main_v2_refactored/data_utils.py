@@ -16,6 +16,8 @@ def split_and_save_data(data_path: str, test_size: float = 0.2, random_state: in
     df = pd.read_csv(data_path)
     logger.info(f"Total records: {len(df)}")
     
+    # df['music_age'] = 2024 -df['release_year']
+    
     # Initialize and fit encoders on full dataset
     encoder = DataEncoder()
     encoder.fit(df)
@@ -58,5 +60,5 @@ def split_and_save_data(data_path: str, test_size: float = 0.2, random_state: in
     return train_path, test_path, encoder_path
 
 if __name__ == "__main__":
-    data_path = '/home/justjosh/recommeders/Lhydra_rs/data/o2_data.csv'
+    data_path = 'data/o2_data.csv'
     train_path, test_path, encoder_path = split_and_save_data(data_path)

@@ -17,6 +17,7 @@ kaggle/
 dev.ini
 tensorflow_docs/
 misc/
+
 interview_docs/
 =12.0.0
 .vscode/
@@ -29,3 +30,5 @@ val_data.csv
 *.png
 Music Info.csv
 User Listening History.csv
+data_engineered_v3/rs_main_v2_refactored/api/node_modules/
+# data_engineered_v3/rs_main_v2_refactored/api/package-lock.json
