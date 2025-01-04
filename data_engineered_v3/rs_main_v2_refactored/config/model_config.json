@@ -11,6 +11,8 @@
         64
     ],
     "dropout": 0.3,
-    "early_stopping_patience": 10,
-    "max_grad_norm": 1.0
+    "early_stopping_patience": 2,
+    "max_grad_norm": 1.0,
+    "l1_lambda": 1e-05,
+    "n_splits": 5
 }

@@ -1,0 +1,66 @@
+2025-01-04 01:15:45,308 - INFO - Loading model from ../checkpoints/best_model.pth
+2025-01-04 01:15:45,374 - INFO - Model loaded successfully
+2025-01-04 01:16:34,056 - INFO - Loading model from ../checkpoints/best_model.pth
+2025-01-04 01:16:34,108 - INFO - Model loaded successfully
+2025-01-04 01:17:53,383 - INFO - Loading model from ../../checkpoints/best_model.pth
+2025-01-04 01:17:53,559 - INFO - Model loaded successfully
+2025-01-04 01:19:25,823 - INFO - Loading model from ../checkpoints/best_model.pth
+2025-01-04 01:19:25,917 - INFO - Model loaded successfully
+2025-01-04 02:00:09,438 - INFO - Loading model from ../checkpoints/best_model.pth
+2025-01-04 02:00:09,499 - INFO - Model loaded successfully
+2025-01-04 02:16:25,116 - INFO - Loading model from /home/martinson/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/checkpoints/best_model.pth
+2025-01-04 02:16:25,191 - INFO - Model loaded successfully
+2025-01-04 02:26:21,229 - INFO - Loading model from /home/martinson/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/checkpoints/best_model.pth
+2025-01-04 02:26:21,298 - INFO - Model loaded successfully
+2025-01-04 04:00:01,023 - INFO - Loading model from /home/martinson/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/checkpoints/best_model.pth
+2025-01-04 04:00:01,121 - INFO - Model loaded successfully
+2025-01-04 04:00:01,138 - INFO - Encoder class counts:
+2025-01-04 04:00:01,138 - INFO - user_encoder: 9717
+2025-01-04 04:00:01,138 - INFO - music_encoder: 9373
+2025-01-04 04:00:01,138 - INFO - artist_encoder: 5059
+2025-01-04 04:00:01,138 - INFO - genre_encoder: 12
+2025-01-04 04:00:01,138 - INFO - Model dimensions from state dict:
+2025-01-04 04:00:01,139 - INFO - num_users: 7773
+2025-01-04 04:00:01,139 - INFO - num_music: 9324
+2025-01-04 04:00:01,139 - INFO - num_artists: 4482
+2025-01-04 04:00:01,139 - INFO - num_genres: 12
+2025-01-04 04:00:01,139 - INFO - num_numerical: 12
+2025-01-04 04:00:01,157 - WARNING - Catalog contains music IDs larger than model capacity. Filtering out excess items.
+2025-01-04 04:03:14,612 - INFO - Loading model from /home/martinson/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/checkpoints/best_model.pth
+2025-01-04 04:03:14,704 - INFO - Model loaded successfully
+2025-01-04 04:03:17,660 - INFO - Encoder class counts:
+2025-01-04 04:03:17,661 - INFO - user_encoder: 9717
+2025-01-04 04:03:17,661 - INFO - music_encoder: 9373
+2025-01-04 04:03:17,661 - INFO - artist_encoder: 5059
+2025-01-04 04:03:17,661 - INFO - genre_encoder: 12
+2025-01-04 04:03:17,661 - INFO - Model dimensions from state dict:
+2025-01-04 04:03:17,661 - INFO - num_users: 7773
+2025-01-04 04:03:17,661 - INFO - num_music: 9324
+2025-01-04 04:03:17,661 - INFO - num_artists: 4482
+2025-01-04 04:03:17,661 - INFO - num_genres: 12
+2025-01-04 04:03:17,662 - INFO - num_numerical: 12
+2025-01-04 04:03:17,811 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.100.216:5000
+2025-01-04 04:03:17,812 - INFO - [33mPress CTRL+C to quit[0m
+2025-01-04 04:03:17,878 - INFO -  * Restarting with watchdog (inotify)
+2025-01-04 04:03:22,653 - INFO - Loading model from /home/martinson/Lhydra_rs/data_engineered_v3/rs_main_v2_refactored/checkpoints/best_model.pth
+2025-01-04 04:03:22,719 - INFO - Model loaded successfully
+2025-01-04 04:03:22,767 - INFO - Encoder class counts:
+2025-01-04 04:03:22,768 - INFO - user_encoder: 9717
+2025-01-04 04:03:22,768 - INFO - music_encoder: 9373
+2025-01-04 04:03:22,768 - INFO - artist_encoder: 5059
+2025-01-04 04:03:22,768 - INFO - genre_encoder: 12
+2025-01-04 04:03:22,769 - INFO - Model dimensions from state dict:
+2025-01-04 04:03:22,769 - INFO - num_users: 7773
+2025-01-04 04:03:22,769 - INFO - num_music: 9324
+2025-01-04 04:03:22,770 - INFO - num_artists: 4482
+2025-01-04 04:03:22,770 - INFO - num_genres: 12
+2025-01-04 04:03:22,770 - INFO - num_numerical: 12
+2025-01-04 04:03:22,848 - WARNING -  * Debugger is active!
+2025-01-04 04:03:22,851 - INFO -  * Debugger PIN: 867-899-571
+2025-01-04 04:03:37,040 - INFO - 192.168.96.1 - - [04/Jan/2025 04:03:37] "[33mGET / HTTP/1.1[0m" 404 -
+2025-01-04 04:03:37,561 - INFO - 192.168.96.1 - - [04/Jan/2025 04:03:37] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-01-04 04:08:24,557 - INFO - 192.168.96.1 - - [04/Jan/2025 04:08:24] "[31m[1mGET /api/recommendations HTTP/1.1[0m" 405 -
+2025-01-04 04:10:56,810 - INFO - 192.168.96.1 - - [04/Jan/2025 04:10:56] "[33mGET / HTTP/1.1[0m" 404 -

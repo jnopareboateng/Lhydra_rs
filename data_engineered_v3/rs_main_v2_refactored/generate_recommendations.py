@@ -6,6 +6,7 @@ import json
 import logging
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
+import os
 from train_model import HybridMusicRecommender, MusicRecommenderDataset
 
 # Set up logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Add safe globals for numpy types
 torch.serialization.add_safe_globals([
-    np._core.multiarray.scalar,  # Allow numpy scalar types
+    np.generic,  # Allow numpy scalar types
     np.ndarray,  # Allow numpy arrays
     np.dtype,    # Allow numpy dtypes
     np.float64,  # Allow specific numpy types
@@ -24,7 +25,7 @@ torch.serialization.add_safe_globals([
 ])
 
 class RecommendationGenerator:
-    def __init__(self, model_path: str, catalog_data: pd.DataFrame):
+    def __init__(self, model_path: str, catalog_data: pd.DataFrame, encoders_path: str):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.catalog_data = catalog_data
         
@@ -42,7 +43,7 @@ class RecommendationGenerator:
         if not self.config:
             # Try loading from config file as fallback
             try:
-                with open('/home/josh/Lhydra_rs/data_engineered_v2/config/model_config.json', 'r') as f:
+                with open('config/model_config.json', 'r') as f:
                     self.config = json.load(f)
             except FileNotFoundError:
                 logger.warning("Config file not found, using default values")
@@ -54,22 +55,54 @@ class RecommendationGenerator:
         
         # Load encoders with safety settings
         torch.serialization.add_safe_globals([LabelEncoder])
-        self.encoders = torch.load('/home/josh/Lhydra_rs/data_engineered_v2/rs_main_v2_refactored/data/data_encoders.pt', weights_only=False)
+        self.encoders = torch.load(encoders_path, weights_only=False)
         
-        # Initialize model
-        self.model = self._initialize_model()
+        # Print shape info for debugging
+        logger.info("Encoder class counts:")
+        for key, encoder in self.encoders.items():
+            if isinstance(encoder, LabelEncoder):
+                logger.info(f"{key}: {len(encoder.classes_)}")
         
-    def _initialize_model(self):
+        # Get state dict dimensions with safety checks
+        state_dict = self.checkpoint['model_state_dict']
+        self.embedding_dims = {
+            'num_users': state_dict['user_embedding.weight'].shape[0],
+            'num_music': state_dict['music_embedding.weight'].shape[0],
+            'num_artists': state_dict['artist_embedding.weight'].shape[0],
+            'num_genres': len(self.encoders['genre_encoder'].classes_),
+            'num_numerical': 12
+        }
+        
+        logger.info("Model dimensions from state dict:")
+        for key, value in self.embedding_dims.items():
+            logger.info(f"{key}: {value}")
+        
+        # Safety check for catalog data
+        max_music_id = self.catalog_data['music_id'].nunique()
+        if max_music_id >= self.embedding_dims['num_music']:
+            logger.warning(f"Catalog contains music IDs larger than model capacity. Filtering out excess items.")
+            valid_music_ids = set(self.encoders['music_encoder'].transform(
+                self.encoders['music_encoder'].classes_[:self.embedding_dims['num_music']]
+            ))
+            self.catalog_data = self.catalog_data[
+                self.catalog_data['music_id'].apply(
+                    lambda x: self.encoders['music_encoder'].transform([x])[0] in valid_music_ids
+                )
+            ]
+            logger.info(f"Filtered catalog size: {len(self.catalog_data)}")
+        
+        self.model = self._initialize_model(self.embedding_dims)
+        
+    def _initialize_model(self, embedding_dims):
         """Initialize and load the model from checkpoint."""
-        # Get dimensions from encoders
         model = HybridMusicRecommender(
-            num_users=len(self.encoders['user_encoder'].classes_),
-            num_music=len(self.encoders['music_encoder'].classes_),
-            num_artists=len(self.encoders['artist_encoder'].classes_),
-            num_genres=len(self.encoders['genre_encoder'].classes_),
-            num_numerical=14,  # Number of numerical features
-            embedding_dim=64,  # Match the saved model's embedding dimension
-            layers=[256, 128, 64],  # Match the saved model's layer sizes
+            num_users=embedding_dims['num_users'],
+            num_music=embedding_dims['num_music'],
+            num_artists=embedding_dims['num_artists'],
+            num_genres=embedding_dims['num_genres'],
+            num_numerical=embedding_dims['num_numerical'],
+            embedding_dim=64,
+            layers=[256, 128, 64],
             dropout=0.2
         )
         
@@ -100,14 +133,15 @@ class RecommendationGenerator:
         user_candidates['gender'] = user_info['gender']
         user_candidates['user_id'] = user_info['user_id']
         
-        # Debug user encoding
+        # Debug user encoding with more detailed error handling
         try:
             encoded_user = self.encoders['user_encoder'].transform([user_info['user_id']])[0]
-            print(f"User ID {user_info['user_id']} encoded as: {encoded_user}")
-        except:
-            print(f"Warning: User ID {user_info['user_id']} not found in encoder")
-            # Use a default encoding or handle unknown users
+            logger.info(f"User ID {user_info['user_id']} encoded as: {encoded_user}")
+        except Exception as e:
+            logger.warning(f"Error encoding user ID: {str(e)}")
+            logger.warning("Using default encoding (0)")
             encoded_user = 0
+            user_candidates['user_id'] = '0'  # Use default user ID
         
         # Debug catalog data
         print(f"\nCatalog Statistics:")
@@ -115,27 +149,32 @@ class RecommendationGenerator:
         print(f"Unique artists: {user_candidates['artist_name'].nunique()}")
         print(f"Unique genres: {user_candidates['main_genre'].nunique()}")
         
-        # Create dataset and dataloader
-        test_dataset = MusicRecommenderDataset(
-            user_candidates,
-            mode='test',
-            encoders=self.encoders
-        )
-        test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+        try:
+            # Create dataset with safety checks
+            test_dataset = MusicRecommenderDataset(
+                user_candidates,
+                mode='test',
+                encoders=self.encoders,
+                embedding_dims=self.embedding_dims  # Pass embedding dimensions
+            )
+            test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+            
+            # Generate predictions
+            predictions = []
+            indices = []
+            
+            with torch.no_grad():
+                for i, batch in enumerate(test_loader):
+                    batch = {k: v.to(self.device) for k, v in batch.items()}
+                    pred = self.model(batch)
+                    predictions.extend(pred.cpu().numpy())
+                    indices.extend(range(i * test_loader.batch_size, 
+                                      min((i + 1) * test_loader.batch_size, len(test_dataset))))
+        except Exception as e:
+            logger.error(f"Error generating recommendations: {str(e)}")
+            raise
         
-        # Generate predictions
-        predictions = []
-        indices = []
-        
-        with torch.no_grad():
-            for i, batch in enumerate(test_loader):
-                batch = {k: v.to(self.device) for k, v in batch.items()}
-                pred = self.model(batch)
-                predictions.extend(pred.cpu().numpy())
-                indices.extend(range(i * test_loader.batch_size, 
-                                  min((i + 1) * test_loader.batch_size, len(test_dataset))))
-        
-        # Create recommendations DataFrame
+        # Create recommendations DataFrame and ensure uniqueness
         recommendations = pd.DataFrame({
             'music': user_candidates['music'].values[indices],
             'artist_name': user_candidates['artist_name'].values[indices],
@@ -143,10 +182,11 @@ class RecommendationGenerator:
             'predicted_plays': predictions
         })
         
-        # Convert predictions to scalar values
-        recommendations['predicted_plays'] = recommendations['predicted_plays'].apply(lambda x: float(x[0]))
+        # Drop duplicates keeping first occurrence (highest predicted play count)
+        recommendations = recommendations.drop_duplicates(subset=['music'], keep='first')
         
-        # Sort by predicted plays and get top N recommendations
+        # Convert predictions to scalar values and sort
+        recommendations['predicted_plays'] = recommendations['predicted_plays'].apply(lambda x: float(x[0]))
         recommendations = recommendations.sort_values('predicted_plays', ascending=False)
         recommendations = recommendations.head(n_recommendations)
         
@@ -242,16 +282,20 @@ class HybridMusicRecommender(nn.Module):
 
 def main():
     # Example usage
-    model_path =  'checkpoints/best_model.pth'
-    catalog_data = pd.read_csv('data/test_data.csv')  # Your music catalog
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    model_path = 'checkpoints/best_model.pth'
+    catalog_data = pd.read_csv(os.path.join(BASE_DIR, 'data', 'test_data.csv'))
+    encoders_path = os.path.join(BASE_DIR, 'data', 'data_encoders.pt')
     
     # Initialize recommendation generator
-    recommender = RecommendationGenerator(model_path, catalog_data)
+    recommender = RecommendationGenerator(model_path, catalog_data, encoders_path)
     
     # Example user
     user_info = {
         'age': 32,
         'gender': 'M',
+        'genre': 'Pop',
+        'music': 'Shape of You',
         'user_id': '44d39c6e5e7b45bfc2187fb3c89be58c5a3dc6a54d2a0075402c551c14ea1459'
     }
     

@@ -14,7 +14,7 @@ class DataEncoder:
         self.numerical_features = [
             'age', 'duration', 'acousticness', 'key', 'mode', 'speechiness',
             'instrumentalness', 'liveness', 'tempo', 'time_signature',
-            'playcount', 'energy_loudness', 'dance_valence'
+            'energy_loudness', 'dance_valence'  # Removed 'playcount'
         ]
     
     def fit(self, df: pd.DataFrame) -> None:

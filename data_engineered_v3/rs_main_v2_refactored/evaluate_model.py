@@ -11,6 +11,7 @@ from train_model import HybridMusicRecommender, MusicRecommenderDataset
 from torch.utils.data import DataLoader
 import logging
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import ParameterGrid, train_test_split
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,20 +40,30 @@ class ModelEvaluator:
         self.model = self._initialize_model()
         self.test_loader = self._prepare_data()
         
-    def _initialize_model(self) -> HybridMusicRecommender:
+        # Create metrics directory with absolute path
+        self.metrics_dir = os.path.join(os.path.dirname(model_path), 'metrics')
+        os.makedirs(self.metrics_dir, exist_ok=True)
+        
+    def _initialize_model(self, custom_config: Dict = None) -> HybridMusicRecommender:
         """Initialize and load the model from checkpoint."""
+        # Use custom config if provided, otherwise use default
+        config = custom_config if custom_config else self.config
+        
         model = HybridMusicRecommender(
             num_users=len(self.encoders['user_encoder'].classes_),
             num_music=len(self.encoders['music_encoder'].classes_),
             num_artists=len(self.encoders['artist_encoder'].classes_),
             num_genres=len(self.encoders['genre_encoder'].classes_),
-            num_numerical=13,  # Number of numerical features
-            embedding_dim=self.config['embedding_dim'],
-            layers=self.config['hidden_layers'],
-            dropout=self.config['dropout']
+            num_numerical=12,
+            embedding_dim=config['embedding_dim'],
+            layers=config['hidden_layers'],
+            dropout=config['dropout']
         )
         
-        model.load_state_dict(self.checkpoint['model_state_dict'])
+        # Only load state dict if using default config
+        if not custom_config:
+            model.load_state_dict(self.checkpoint['model_state_dict'])
+        
         model = model.to(self.device)
         model.eval()
         return model
@@ -134,8 +145,11 @@ class ModelEvaluator:
         
         return bias_analysis
     
-    def plot_prediction_distribution(self, save_dir: str = 'metrics'):
+    def plot_prediction_distribution(self, save_dir: str = None):
         """Plot the distribution of predictions vs true values."""
+        if save_dir is None:
+            save_dir = self.metrics_dir
+            
         true_values = []
         predictions = []
         
@@ -159,13 +173,20 @@ class ModelEvaluator:
         plt.ylabel('Predictions')
         plt.title('Prediction vs True Values')
         
-        # Save plot
-        os.makedirs(save_dir, exist_ok=True)
-        plt.savefig(os.path.join(save_dir, 'prediction_distribution.png'))
-        plt.close()
-        
-    def plot_error_distribution(self, save_dir: str = 'metrics'):
+        try:
+            # Save plot with absolute path
+            plot_path = os.path.join(save_dir, 'prediction_distribution.png')
+            plt.savefig(plot_path)
+            plt.close()
+            logger.info(f"Saved prediction distribution plot to: {plot_path}")
+        except Exception as e:
+            logger.error(f"Error saving prediction distribution plot: {str(e)}")
+            
+    def plot_error_distribution(self, save_dir: str = None):
         """Plot the distribution of prediction errors."""
+        if save_dir is None:
+            save_dir = self.metrics_dir
+            
         true_values = []
         predictions = []
         
@@ -184,66 +205,87 @@ class ModelEvaluator:
         plt.ylabel('Count')
         plt.title('Distribution of Prediction Errors')
         
-        # Save plot
-        os.makedirs(save_dir, exist_ok=True)
-        plt.savefig(os.path.join(save_dir, 'error_distribution.png'))
-        plt.close()
+        try:
+            plot_path = os.path.join(save_dir, 'error_distribution.png')
+            plt.savefig(plot_path)
+            plt.close()
+            logger.info(f"Saved error distribution plot to: {plot_path}")
+        except Exception as e:
+            logger.error(f"Error saving error distribution plot: {str(e)}")
     
     def evaluate_top_k_recommendations(self, k: int = 10) -> Dict[str, float]:
         """Evaluate top-K recommendation metrics."""
-        true_values = []
-        predictions = []
+        user_metrics = []
         
-        with torch.no_grad():
-            for batch in self.test_loader:
+        # Group by user to evaluate per-user recommendations
+        for user_id in self.test_data['user_id'].unique():
+            user_mask = self.test_data['user_id'] == user_id
+            user_data = self.test_data[user_mask]
+            
+            # Skip users with too few interactions
+            if len(user_data) < k:
+                continue
+            
+            user_dataset = MusicRecommenderDataset(
+                user_data,
+                mode='test',
+                encoders=self.encoders
+            )
+            user_loader = DataLoader(user_dataset, batch_size=len(user_data), shuffle=False)
+            
+            with torch.no_grad():
+                batch = next(iter(user_loader))
                 batch = {k: v.to(self.device) for k, v in batch.items()}
-                pred = self.model(batch)
-                true_values.extend(batch['playcount'].cpu().numpy())
-                predictions.extend(pred.cpu().numpy())
+                predictions = self.model(batch).cpu().numpy()
+                true_values = batch['playcount'].cpu().numpy()
+                
+                # Normalize predictions and true values to [0, 1] range
+                true_values = (true_values - true_values.min()) / (true_values.max() - true_values.min() + 1e-8)
+                predictions = (predictions - predictions.min()) / (predictions.max() - predictions.min() + 1e-8)
+                
+                # Calculate metrics for this user
+                top_k_pred_idx = np.argsort(predictions)[-k:][::-1]
+                top_k_true_idx = np.argsort(true_values)[-k:][::-1]
+                
+                # Calculate NDCG
+                dcg = self._calculate_dcg(true_values, top_k_pred_idx, k)
+                idcg = self._calculate_dcg(true_values, top_k_true_idx, k)
+                
+                # Handle edge case where idcg is 0
+                ndcg = dcg / idcg if idcg > 0 else 0.0
+                
+                # Calculate precision and recall
+                relevant_items = set(top_k_true_idx)
+                recommended_items = set(top_k_pred_idx)
+                
+                precision = len(relevant_items & recommended_items) / k
+                recall = len(relevant_items & recommended_items) / len(relevant_items)
+                
+                user_metrics.append({
+                    'ndcg': ndcg,
+                    'precision': precision,
+                    'recall': recall
+                })
         
-        true_values = np.array(true_values)
-        predictions = np.array(predictions)
-        
-        # Calculate NDCG@K
-        def calculate_ndcg(y_true, y_pred, k):
-            # Get indices of top k predicted items
-            top_k_indices = np.argsort(y_pred)[-k:][::-1]  # Sort descending
-            
-            # Get relevance scores (true values) for top k items
-            rel = y_true[top_k_indices]
-            
-            # Calculate DCG
-            dcg = rel[0] + np.sum(rel[1:] / np.log2(np.arange(2, len(rel) + 1)))
-            
-            # Calculate IDCG
-            ideal_rel = np.sort(y_true)[::-1][:k]  # Sort descending
-            idcg = ideal_rel[0] + np.sum(ideal_rel[1:] / np.log2(np.arange(2, len(ideal_rel) + 1)))
-            
-            # Calculate NDCG
-            if idcg == 0:
-                return 0.0
-            return dcg / idcg
-        
-        # Calculate metrics for each user's recommendations
-        ndcg_scores = []
-        precision_scores = []
-        recall_scores = []
-        
-        # Calculate metrics
-        ndcg = calculate_ndcg(true_values, predictions, k)
-        
-        # Calculate precision and recall
-        top_k_pred = np.argsort(predictions)[-k:]
-        top_k_true = np.argsort(true_values)[-k:]
-        
-        precision = len(np.intersect1d(top_k_pred, top_k_true)) / k
-        recall = len(np.intersect1d(top_k_pred, top_k_true)) / min(k, len(top_k_true))
-        
-        return {
-            'ndcg@10': float(ndcg),
-            'precision@10': float(precision),
-            'recall@10': float(recall)
+        # Average metrics across users
+        avg_metrics = {
+            'ndcg@10': float(np.mean([m['ndcg'] for m in user_metrics])),
+            'precision@10': float(np.mean([m['precision'] for m in user_metrics])),
+            'recall@10': float(np.mean([m['recall'] for m in user_metrics]))
         }
+        
+        return avg_metrics
+
+    def _calculate_dcg(self, true_values: np.ndarray, indices: np.ndarray, k: int) -> float:
+        """Helper method to calculate DCG with numerical stability."""
+        relevance = true_values[indices[:k]]
+        # Cap the relevance values to prevent overflow
+        max_relevance = 10  # Set a reasonable maximum value
+        relevance = np.clip(relevance, 0, max_relevance)
+        
+        # Use log2(rank + 1) directly instead of creating array
+        gains = (2 ** relevance - 1) / np.log2(np.arange(2, len(relevance) + 2))
+        return float(np.sum(gains))
     
     def evaluate_cold_start(self, min_interactions: int = 5) -> Dict[str, Dict[str, float]]:
         """
@@ -361,33 +403,94 @@ class ModelEvaluator:
         
         return results
 
+    def tune_hyperparameters(self, param_grid: Dict[str, List], val_data: pd.DataFrame) -> Dict:
+        """
+        Tune hyperparameters using validation set.
+        
+        Args:
+            param_grid: Dictionary of parameters to try
+            val_data: Validation data
+            
+        Returns:
+            Best parameters found
+        """
+        best_score = float('inf')
+        best_params = None
+        
+        # Create validation dataset
+        val_dataset = MusicRecommenderDataset(val_data, mode='test', encoders=self.encoders)
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
+        
+        # Try all parameter combinations
+        for params in ParameterGrid(param_grid):
+            # Create a new config with updated parameters
+            current_config = self.config.copy()
+            current_config.update(params)
+            
+            # Initialize model with current parameters
+            self.model = self._initialize_model(custom_config=current_config)
+            
+            # Evaluate on validation set
+            metrics = self.calculate_metrics()
+            score = metrics['rmse']  # Use RMSE as scoring metric
+            
+            if score < best_score:
+                best_score = score
+                best_params = params
+                logger.info(f"New best parameters found: {params} (RMSE: {score:.4f})")
+        
+        return best_params
+
 def main():
-    # Load test data
-    test_data = pd.read_csv('/mmfs1/projects/zubair.malik/francis.martinson/LHydra/data_engineered_v2/rs_main_v2_refactored/data/test_data.csv')
+    # Load test data and check for data compatibility
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    test_path = os.path.join(ROOT_DIR, 'data', 'test_data.csv')
+    model_path = os.path.join(ROOT_DIR, 'data_engineered_v3', 'rs_main_v2_refactored', 'checkpoints', 'best_model.pth')
     
-    # Initialize evaluator
-    evaluator = ModelEvaluator(
-        model_path='checkpoints/best_model.pth',
-        test_data=test_data,
-        batch_size=32
-    )
+    test_data = pd.read_csv(test_path)
+    logger.info(f"Loaded test data with {len(test_data)} samples")
     
-    # Run evaluation
-    results = evaluator.save_evaluation_results()
+    # Split test data into validation and test
+    val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
     
-    # Print summary
-    logger.info("\nEvaluation Summary:")
-    logger.info("Basic Metrics:")
-    for metric, value in results['basic_metrics'].items():
-        logger.info(f"{metric}: {value:.4f}")
-    
-    logger.info("\nTop-K Metrics:")
-    for metric, value in results['top_k_metrics'].items():
-        logger.info(f"{metric}: {value:.4f}")
-    
-    logger.info("\nBias Analysis:")
-    for range_name, bias in results['bias_analysis'].items():
-        logger.info(f"{range_name}: {bias:.4f}")
+    try:
+        # Initialize evaluator
+        evaluator = ModelEvaluator(
+            model_path=model_path,
+            test_data=test_data,
+            batch_size=32
+        )
+        
+        # Tune hyperparameters
+        param_grid = {
+            'embedding_dim': [32, 64, 128],
+            'dropout': [0.1, 0.2, 0.3],
+            'hidden_layers': [[128, 64], [256, 128, 64], [512, 256, 128]]
+        }
+        
+        best_params = evaluator.tune_hyperparameters(param_grid, val_data)
+        logger.info(f"Best parameters: {best_params}")
+        
+        # Run evaluation
+        results = evaluator.save_evaluation_results()
+        
+        # Print summary
+        logger.info("\nEvaluation Summary:")
+        logger.info("Basic Metrics:")
+        for metric, value in results['basic_metrics'].items():
+            logger.info(f"{metric}: {value:.4f}")
+        
+        logger.info("\nTop-K Metrics:")
+        for metric, value in results['top_k_metrics'].items():
+            logger.info(f"{metric}: {value:.4f}")
+        
+        logger.info("\nBias Analysis:")
+        for range_name, bias in results['bias_analysis'].items():
+            logger.info(f"{range_name}: {bias:.4f}")
+        
+    except Exception as e:
+        logger.error(f"Error during evaluation: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()

@@ -43,7 +43,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/recommendations/', {
+      const response = await fetch('http://localhost:5000/api/recommendations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +56,11 @@ export default function Home() {
       }
 
       const data = await response.json();
-      setRecommendations(data.recommendations);
+      if (data.status === 'success') {
+        setRecommendations(data.recommendations);
+      } else {
+        throw new Error(data.message || 'Failed to get recommendations');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
