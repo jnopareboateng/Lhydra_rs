@@ -17,7 +17,7 @@ kaggle/
 dev.ini
 tensorflow_docs/
 misc/
-
+__pycache__/
 interview_docs/
 =12.0.0
 .vscode/

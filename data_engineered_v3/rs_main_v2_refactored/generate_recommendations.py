@@ -95,6 +95,7 @@ class RecommendationGenerator:
         
     def _initialize_model(self, embedding_dims):
         """Initialize and load the model from checkpoint."""
+        # Get dimensions from encoders
         model = HybridMusicRecommender(
             num_users=embedding_dims['num_users'],
             num_music=embedding_dims['num_music'],
@@ -187,6 +188,8 @@ class RecommendationGenerator:
         
         # Convert predictions to scalar values and sort
         recommendations['predicted_plays'] = recommendations['predicted_plays'].apply(lambda x: float(x[0]))
+        
+        # Sort by predicted plays and get top N recommendations
         recommendations = recommendations.sort_values('predicted_plays', ascending=False)
         recommendations = recommendations.head(n_recommendations)
         
