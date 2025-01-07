@@ -1,8 +1,0 @@
-pytorch
-pandas
-scikit-learn
-pickle
-numpy
-matplotlib
-seaborn
-tensorflow==2.15

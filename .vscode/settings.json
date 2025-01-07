@@ -1,5 +1,0 @@
-{
-    "python.analysis.autoImportCompletions": true,
-    "workbench.editorLargeFileConfirmation": 50,
-    "git.ignoreLimitWarning": true
-}
