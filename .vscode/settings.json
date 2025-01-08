@@ -1,5 +1,8 @@
 {
     "python.analysis.autoImportCompletions": true,
     "workbench.editorLargeFileConfirmation": 50,
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "python.analysis.extraPaths": [
+        "./recommender_system/rs_main_v2_refactored"
+    ]
 }

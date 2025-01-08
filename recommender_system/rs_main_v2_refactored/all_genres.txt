@@ -1,0 +1,447 @@
+## CLASSICAL (Total: 1441)
+- classical: 1435
+- canadian classical: 2
+- classical tenor: 1
+- orchestral soundtrack: 1
+- baroque: 1
+
+## HIP_HOP (Total: 1542)
+- hip-hop: 1209
+- underground rap: 173
+- rap: 77
+- dark trap: 29
+- dirty south rap: 7
+- baton rouge rap: 5
+- chicago rap: 5
+- gangster rap: 5
+- country rap: 4
+- pop rap: 4
+- new jersey rap: 3
+- comedy rap: 3
+- rap: 2
+- battle rap: 2
+- drill: 2
+- melodic rap: 2
+- emo rap: 2
+- west coast trap: 1
+- cali rap: 1
+- alabama rap: 1
+- dmv rap: 1
+- trap argentino: 1
+- dfw rap: 1
+- chicago drill: 1
+- bass trap: 1
+
+## ELECTRONIC (Total: 1300)
+- dance/electronic: 1166
+- dance pop: 68
+- edm: 17
+- australian dance: 12
+- dutch house: 6
+- bass house: 4
+- pop edm: 3
+- electronica: 3
+- canadian electronic: 3
+- dutch edm: 2
+- belgian edm: 2
+- gaming edm: 1
+- dancehall queen: 1
+- float house: 1
+- deep house: 1
+- electro house: 1
+- uk dance: 1
+- dancefloor dnb: 1
+- belgian dance: 1
+- deep tropical house: 1
+- eurodance: 1
+- bubblegum dance: 1
+- acid house: 1
+- dubstep: 1
+- electronic trap: 1
+
+## ROCK (Total: 1865)
+- rock: 1089
+- metal: 213
+- punk: 82
+- album rock: 70
+- alternative metal: 57
+- classic rock: 44
+- alternative rock: 40
+- modern rock: 15
+- indie folk: 14
+- alternative dance: 12
+- modern alternative rock: 12
+- indie pop rap: 11
+- indietronica: 11
+- indie rock: 10
+- neon pop punk: 7
+- indie poptimism: 6
+- reggae rock: 5
+- rock-and-roll: 5
+- la indie: 4
+- indie pop: 4
+- alternative emo: 4
+- bay area indie: 4
+- rap rock: 4
+- country rock: 4
+- edmonton indie: 3
+- metalcore: 3
+- albuquerque indie: 3
+- pop rock: 3
+- alternative r&b: 3
+- duluth indie: 3
+- australian indie: 3
+- brighton indie: 3
+- asbury park indie: 3
+- alternative country: 3
+- heartland rock: 3
+- brooklyn indie: 3
+- alternative americana: 3
+- grunge: 3
+- british math rock: 3
+- alternative pop rock: 3
+- rock drums: 2
+- alternative pop: 2
+- melodic metalcore: 2
+- german metal: 2
+- punk: 2
+- san marcos tx indie: 2
+- modern blues rock: 2
+- garage rock: 2
+- indiecoustica: 2
+- alternative hip hop: 2
+- minneapolis indie: 2
+- denton tx indie: 2
+- irish rock: 2
+- comedy rock: 2
+- modern folk rock: 2
+- canadian indie: 2
+- classic garage rock: 2
+- indie fuzzpop: 2
+- christian alternative rock: 2
+- australian indie folk: 2
+- piano rock: 2
+- indie punk: 1
+- alternative roots rock: 1
+- kent indie: 1
+- cyber metal: 1
+- glam rock: 1
+- australian alternative rock: 1
+- pinoy indie: 1
+- acid rock: 1
+- garage punk: 1
+- channel islands indie: 1
+- modern ska punk: 1
+- christian metal: 1
+- indie electropop: 1
+- hard rock: 1
+- australian rock: 1
+- acoustic rock: 1
+- soft rock: 1
+- electronic rock: 1
+- christian indie: 1
+- gothic metal: 1
+- connecticut indie: 1
+- pov indie: 1
+- liverpool indie: 1
+- pop punk: 1
+- bergen indie: 1
+- modern hard rock: 1
+- danish metal: 1
+- neo classical metal: 1
+- indie surf: 1
+- montana indie: 1
+- lovers rock: 1
+- funk rock: 1
+- french indie pop: 1
+- alabama indie: 1
+- folk rock: 1
+- canadian rock: 1
+- boston indie: 1
+- ambient post-rock: 1
+- lancaster pa indie: 1
+- art punk: 1
+- dance rock: 1
+- glam metal: 1
+- uk alternative pop: 1
+- oakland indie: 1
+- granada indie: 1
+- indie garage rock: 1
+- trop rock: 1
+- english indie rock: 1
+
+## JAZZ (Total: 984)
+- jazz: 968
+- reggae fusion: 4
+- bebop: 3
+- contemporary vocal jazz: 2
+- avant-garde jazz: 1
+- cool jazz: 1
+- latin jazz: 1
+- flamenco fusion: 1
+- jazz catala: 1
+- smooth jazz: 1
+- jazz cover: 1
+
+## RB_SOUL (Total: 893)
+- rnb: 509
+- soul: 317
+- classic soul: 16
+- contemporary r&b: 12
+- canadian contemporary r&b: 9
+- british soul: 9
+- r&b: 8
+- vapor soul: 4
+- motown: 3
+- neo soul: 3
+- southern soul: 1
+- uk contemporary r&b: 1
+- soul flow: 1
+
+## FOLK (Total: 525)
+- folk/acoustic: 503
+- canadian singer-songwriter: 3
+- british folk: 3
+- canadian folk: 3
+- ambient folk: 2
+- acoustic blues: 2
+- british singer-songwriter: 1
+- neo-singer-songwriter: 1
+- irish singer-songwriter: 1
+- acoustic chill: 1
+- ectofolk: 1
+- nz folk: 1
+- folk: 1
+- chamber folk: 1
+- folktronica: 1
+
+## COUNTRY (Total: 565)
+- country: 466
+- contemporary country: 59
+- classic texas country: 13
+- classic oklahoma country: 8
+- country: 6
+- black americana: 3
+- bluegrass: 2
+- countrygaze: 2
+- arkansas country: 2
+- neo-traditional bluegrass: 1
+- country blues: 1
+- progressive bluegrass: 1
+- alberta country: 1
+
+## POP (Total: 692)
+- pop: 456
+- pop: 48
+- acoustic pop: 19
+- folk-pop: 19
+- art pop: 17
+- electropop: 13
+- chamber pop: 11
+- canadian pop: 9
+- latin pop: 6
+- candy pop: 5
+- hip pop: 5
+- barbadian pop: 5
+- latin arena pop: 4
+- baroque pop: 4
+- bubblegum pop: 4
+- bow pop: 4
+- colombian pop: 4
+- k-pop: 3
+- classic uk pop: 3
+- pop r&b: 3
+- classic country pop: 3
+- chill pop: 3
+- metropopolis: 3
+- viral pop: 2
+- scandipop: 2
+- electropowerpop: 2
+- post-teen pop: 2
+- danish pop: 2
+- shimmer pop: 2
+- chill dream pop: 2
+- pop soul: 2
+- power pop: 2
+- australian pop: 2
+- shiver pop: 1
+- garage pop: 1
+- pop argentino: 1
+- country pop: 1
+- nyc pop: 1
+- europop: 1
+- modern dream pop: 1
+- modern power pop: 1
+- pop emo: 1
+- operatic pop: 1
+- dream pop: 1
+- panamanian pop: 1
+- gauze pop: 1
+- german pop: 1
+- britpop revival: 1
+- latin viral pop: 1
+- brill building pop: 1
+- britpop: 1
+- new wave pop: 1
+- teen pop: 1
+- swedish electropop: 1
+
+## RELIGIOUS (Total: 351)
+- christian/gospel: 337
+- christian hip hop: 4
+- gospel: 3
+- christian uplift: 2
+- christian a cappella: 2
+- ambient worship: 2
+- christian music: 1
+
+## OTHER (Total: 1405)
+- blues: 320
+- easy listening: 292
+- emo: 215
+- unknown: 101
+- doo-wop: 33
+- ccm: 29
+- atl hip hop: 28
+- adult standards: 28
+- brostep: 19
+- boy band: 18
+- alt z: 16
+- neo mellow: 14
+- hip hop: 14
+- conscious hip hop: 13
+- detroit hip hop: 11
+- disco: 10
+- jam band: 10
+- permanent wave: 9
+- new romantic: 9
+- east coast hip hop: 8
+- a cappella: 8
+- complextro: 7
+- broadway: 6
+- banda: 6
+- chillwave: 6
+- hopebeat: 6
+- canadian hip hop: 5
+- deep underground hip hop: 5
+- hollywood: 5
+- downtempo: 4
+- movie tunes: 4
+- afrofuturism: 4
+- emo: 4
+- high vibe: 4
+- anthem emo: 3
+- bachata: 3
+- german soundtrack: 3
+- girl group: 3
+- glee club: 3
+- chillstep: 3
+- canadian ccm: 3
+- new wave: 3
+- celtic: 2
+- abstract hip hop: 2
+- grupera: 2
+- salsa: 2
+- kentucky hip hop: 2
+- g funk: 2
+- comic: 2
+- mellow gold: 2
+- melancholia: 2
+- crunk: 2
+- future bass: 2
+- new age piano: 2
+- compositional ambient: 2
+- pixie: 2
+- chanson: 2
+- funk: 1
+- bakersfield sound: 1
+- escape room: 1
+- arkansas hip hop: 1
+- electro swing: 1
+- swing: 1
+- asian american hip hop: 1
+- chaotic hardcore: 1
+- canadian psychedelic: 1
+- mashup: 1
+- canadian hardcore: 1
+- underground hip hop: 1
+- deep new wave: 1
+- children's music: 1
+- banjo: 1
+- torch song: 1
+- lullaby: 1
+- musica chihuahuense: 1
+- pixel: 1
+- epicore: 1
+- freestyle: 1
+- ukulele: 1
+- classic soundtrack: 1
+- british invasion: 1
+- background piano: 1
+- nova mpb: 1
+- quiet storm: 1
+- fingerstyle: 1
+- blues: 1
+- calypso: 1
+- memphis hip hop: 1
+- deathcore: 1
+- lounge: 1
+- cumbia: 1
+- wonky: 1
+- idol: 1
+- soundtrack: 1
+- sleep: 1
+- bolero: 1
+- post-disco: 1
+- deep ragga: 1
+- big room: 1
+- balearic: 1
+- chapel hill sound: 1
+- piano cover: 1
+- elephant 6: 1
+- flick hop: 1
+- chill beats: 1
+- ethereal wave: 1
+- aussietronica: 1
+- harlem hip hop: 1
+- lilith: 1
+- early romantic era: 1
+- middle earth: 1
+- new england emo: 1
+- chopped and screwed: 1
+- classic girl group: 1
+- zeuhl: 1
+- christmas instrumental: 1
+- bronx hip hop: 1
+- french shoegaze: 1
+- deep freestyle: 1
+- fantasy: 1
+- corrido: 1
+- new french touch: 1
+- chicago bop: 1
+- ambient: 1
+- abstract: 1
+- indonesian hip hop: 1
+- hyphy: 1
+- brit funk: 1
+- cosmic american: 1
+- bass music: 1
+- argentine ambient: 1
+- louisiana blues: 1
+- livetronica: 1
+- british soundtrack: 1
+- halloween: 1
+- jawaiian: 1
+- opm: 1
+
+## WORLD (Total: 25)
+- latin hip hop: 8
+- reggae: 5
+- afrobeat: 3
+- east coast reggae: 2
+- reggaeton: 2
+- latin afrobeat: 1
+- afrobeats: 1
+- latintronica: 1
+- electro latino: 1
+- world worship: 1
