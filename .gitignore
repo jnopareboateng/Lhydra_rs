@@ -39,4 +39,4 @@ recommender_system/rs_main_v2_refactored/api/
 filestructure.txt
 __pycache__/
 .vscode/
-
+rs_main_v2_refactored/

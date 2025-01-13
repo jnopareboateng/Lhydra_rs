@@ -124,58 +124,38 @@ class RecommendationGenerator:
         return model
     
     def generate_recommendations(self, user_info: dict, n_recommendations: int = 10) -> pd.DataFrame:
-        """Update to handle encoded genres."""
+        """Generate recommendations with complete feature handling."""
         try:
-            # Use new transform_genres method directly from DataEncoder
-            encoded_genres = self.encoders.transform_genres(user_info['favourite_genres'])
+            # Create a temporary DataFrame with all songs for the user
+            user_candidates = self.catalog_data.copy()
             
-            # Print available genres for debugging
-            logger.info(f"Available genres: {sorted(self.encoders.genres_classes_)}")
-            logger.info(f"User genres: {user_info['favourite_genres']}")
-            logger.info(f"Encoded genres: {encoded_genres}")
+            # Add user information to all candidates
+            user_candidates['age'] = user_info['age']
+            user_candidates['gender'] = user_info.get('gender', 'U')
             
-        except Exception as e:
-            logger.error(f"Error encoding genres: {str(e)}")
-            # Use default genre if encoding fails
-            encoded_genres = np.array([0])  # Use first genre as default
-        
-        # Create feature vectors for user preferences - direct access
-        artist_features = self.encoders.artist_vectorizer.transform(user_info['favourite_artists'])
-        music_features = self.encoders.music_vectorizer.transform(user_info['favourite_music'])
-        
-        # Average features for multiple preferences
-        user_genre_features = encoded_genres.mean(axis=0)
-        user_artist_features = artist_features.mean(axis=0)
-        user_music_features = music_features.mean(axis=0)
-        
-        # Create a temporary DataFrame with all songs for the user
-        user_candidates = self.catalog_data.copy()
-        user_candidates['age'] = user_info['age']
-        user_candidates['gender'] = user_info['gender']
-        
-        # # Debug user encoding with more detailed error handling
-        # try:
-        #     encoded_user = self.encoders['user_encoder'].transform([user_info['user_id']])[0]
-        #     logger.info(f"User ID {user_info['user_id']} encoded as: {encoded_user}")
-        # except Exception as e:
-        #     logger.warning(f"Error encoding user ID: {str(e)}")
-        #     logger.warning("Using default encoding (0)")
-        #     encoded_user = 0
-        
-        # Debug catalog data
-        print(f"\nCatalog Statistics:")
-        print(f"Total songs: {len(user_candidates)}")
-        print(f"Unique artists: {user_candidates['artist_name'].nunique()}")
-        print(f"Unique genres: {user_candidates['main_genre'].nunique()}")
-        
-        try:
-            # Create dataset with safety checks
+            # Handle explicit flag properly
+            if 'explicit' in user_candidates.columns:
+                user_candidates['explicit'] = user_candidates['explicit'].astype(str)
+            else:
+                user_candidates['explicit'] = 'False'
+            
+            # Ensure all required columns are present
+            required_cols = self.encoders.numerical_features + ['music', 'artist_name', 'main_genre']
+            missing_cols = [col for col in required_cols if col not in user_candidates.columns]
+            if missing_cols:
+                logger.warning(f"Missing columns in catalog: {missing_cols}")
+                for col in missing_cols:
+                    user_candidates[col] = 0  # Add default values
+            
+            # Create dataset with complete features
             test_dataset = MusicRecommenderDataset(
                 user_candidates,
                 mode='test',
-                encoders=self.encoders,  # Pass DataEncoder object directly
-                embedding_dims=self.embedding_dims  # Pass embedding dimensions
+                encoders=self.encoders
             )
+            
+            # ...rest of the recommendation generation code...
+            
             test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
             
             # Generate predictions

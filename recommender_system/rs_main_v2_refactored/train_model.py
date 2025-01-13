@@ -13,7 +13,7 @@ from typing import Tuple, Dict, List
 import json
 from datetime import datetime
 import torch.nn.functional as F
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import math
 from encoder_utils import DataEncoder  # Add this import
 import shap
@@ -33,52 +33,61 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class MusicRecommenderDataset(Dataset):
-    """Custom Dataset for loading music recommendation data with additional features."""
-    
-    def __init__(self, df: pd.DataFrame, mode: str = 'train', encoders=None, embedding_dims=None):
+    def __init__(self, df: pd.DataFrame, mode: str = 'train', encoders=None):
+        """Initialize dataset with complete feature handling."""
         self.df = df
         self.mode = mode
-        self.embedding_dims = embedding_dims
         
-        if encoders is not None:
-            try:
-                features = encoders.transform(df)  # Access transform method directly
-                self.music_features = features['music_features']
-                self.artist_features = features['artist_features']
-                self.genre_features = features['genre_features']
-                self.numerical_features = features['numerical_features']
-                self.playcount = df['playcount'].values
-            except Exception as e:
-                logger.error(f"Error transforming features: {str(e)}")
-                raise
-        else:
+        if encoders is None:
             raise ValueError("Encoders must be provided")
-
-        # Binary features
-        self.explicit = df['explicit'].astype(int).values
-        self.gender = (df['gender'] == 'M').astype(int).values
-
-        # Add sample weights if they exist
+            
+        try:
+            # Transform all features using encoder
+            features = encoders.transform(df)
+            self.music_features = features['music_features']
+            self.artist_features = features['artist_features']
+            self.genre_features = features['genre_features']
+            self.numerical_features = features['numerical_features']
+            self.explicit = features['explicit']
+            self.gender = features['gender']
+            
+            # Log transform playcount for training data
+            max_value = 1e6
+            self.playcount = np.log1p(
+                np.clip(df['playcount'].values, 0, max_value)
+            ).astype(np.float32)
+            
+        except Exception as e:
+            logger.error(f"Error initializing dataset: {str(e)}")
+            raise
+            
+        # Store sample weights if they exist
         self.sample_weights = df['sample_weight'].values if 'sample_weight' in df else None
-    
+        
     def __len__(self) -> int:
         return len(self.df)
     
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        item = {
-            'music_features': torch.tensor(self.music_features[idx].toarray(), dtype=torch.float).squeeze(),
-            'artist_features': torch.tensor(self.artist_features[idx].toarray(), dtype=torch.float).squeeze(),
-            'genre_features': torch.tensor(self.genre_features[idx], dtype=torch.long),  # Change to long for categorical
-            'numerical_features': torch.tensor(self.numerical_features[idx], dtype=torch.float),
-            'explicit': torch.tensor(self.explicit[idx], dtype=torch.float),
-            'gender': torch.tensor(self.gender[idx], dtype=torch.float),
-            'playcount': torch.tensor(self.playcount[idx], dtype=torch.float)
-        }
-        
-        if self.sample_weights is not None:
-            item['sample_weight'] = torch.tensor(self.sample_weights[idx], dtype=torch.float)
-        
-        return item
+        """Get item with all required features."""
+        try:
+            item = {
+                'music_features': torch.tensor(self.music_features[idx].toarray(), dtype=torch.float).squeeze(),
+                'artist_features': torch.tensor(self.artist_features[idx].toarray(), dtype=torch.float).squeeze(),
+                'genre_features': torch.tensor(self.genre_features[idx], dtype=torch.long),
+                'numerical_features': torch.tensor(self.numerical_features[idx], dtype=torch.float),
+                'explicit': torch.tensor(self.explicit[idx], dtype=torch.float),
+                'gender': torch.tensor(self.gender[idx], dtype=torch.float),
+                'playcount': torch.tensor(self.playcount[idx], dtype=torch.float)
+            }
+            
+            if self.sample_weights is not None:
+                item['sample_weight'] = torch.tensor(self.sample_weights[idx], dtype=torch.float)
+                
+            return item
+            
+        except Exception as e:
+            logger.error(f"Error getting item {idx}: {str(e)}")
+            raise
 
 class HybridMusicRecommender(nn.Module):
     """Hybrid Neural Collaborative Filtering model with additional features."""
@@ -239,31 +248,40 @@ def calculate_ndcg(predictions: torch.Tensor, targets: torch.Tensor, k: int = 10
     Calculate NDCG@K for rating predictions.
     For rating predictions, we consider higher predicted ratings as more relevant.
     """
-    # Ensure inputs are on the same device
-    device = predictions.device
-    predictions = predictions.view(-1)  # Flatten predictions
-    targets = targets.view(-1)  # Flatten targets
-    
-    # Sort predictions descending to get top K items
-    _, indices = torch.sort(predictions, descending=True)
-    indices = indices[:k]  # Get top K indices
-    
-    # Get corresponding target values
-    pred_sorted = predictions[indices]
-    target_sorted = targets[indices]
-    
-    # Calculate DCG
-    pos = torch.arange(1, len(indices) + 1, device=device, dtype=torch.float32)
-    dcg = (target_sorted / torch.log2(pos + 1)).sum()
-    
-    # Calculate IDCG
-    ideal_target, _ = torch.sort(targets, descending=True)
-    ideal_target = ideal_target[:k]
-    idcg = (ideal_target / torch.log2(pos + 1)).sum()
-    
-    # Calculate NDCG, handling division by zero
-    ndcg = dcg / (idcg + 1e-8)  # Add small epsilon to avoid division by zero
-    return ndcg.item()
+    try:
+        # Ensure inputs are on the same device and clipped
+        device = predictions.device
+        predictions = torch.clamp(predictions, 0, 1e6)
+        targets = torch.clamp(targets, 0, 1e6)
+        
+        predictions = predictions.view(-1)  # Flatten predictions
+        targets = targets.view(-1)  # Flatten targets
+        
+        # Sort predictions descending to get top K items
+        _, indices = torch.sort(predictions, descending=True)
+        indices = indices[:k]
+        
+        # Get corresponding target values
+        pred_sorted = predictions[indices]
+        target_sorted = targets[indices]
+        
+        # Calculate DCG with stable computation
+        pos = torch.arange(1, len(indices) + 1, device=device, dtype=torch.float32)
+        dcg = (target_sorted / (torch.log2(pos + 1) + 1e-10)).sum()
+        
+        # Calculate IDCG
+        ideal_target, _ = torch.sort(targets, descending=True)
+        ideal_target = ideal_target[:k]
+        idcg = (ideal_target / (torch.log2(pos + 1) + 1e-10)).sum()
+        
+        # Calculate NDCG with proper handling of zero division
+        if idcg == 0:
+            return 0.0
+        ndcg = (dcg / idcg).item()
+        return max(0.0, min(1.0, ndcg))  # Clip to valid range [0, 1]
+    except Exception as e:
+        logger.error(f"Error calculating NDCG: {str(e)}")
+        return 0.0
 
 class Trainer:
     """Trainer class for the hybrid music recommender model."""
@@ -324,72 +342,117 @@ class Trainer:
         return self.l1_lambda * l1_loss
         
     def calculate_metrics(self, predictions: torch.Tensor, targets: torch.Tensor) -> Dict[str, float]:
-        """Calculate training metrics."""
-        # Convert tensors to numpy for sklearn metrics
-        predictions = predictions.cpu().numpy()
-        targets = targets.cpu().numpy()
-        
-        # Calculate basic metrics
-        mse = mean_squared_error(targets, predictions)
-        rmse = math.sqrt(mse)
-        mae = mean_absolute_error(targets, predictions)  # Fix this line
-        
-        # Calculate NDCG using tensor inputs
-        ndcg = calculate_ndcg(
-            torch.tensor(predictions, device=self.device),
-            torch.tensor(targets, device=self.device),
-            k=10
-        )
-        
-        return {
-            'loss': mse,
-            'rmse': rmse,
-            'mae': mae,
-            'ndcg': ndcg
-        }
-        
+        """Calculate training metrics with sklearn's new API."""
+        try:
+            predictions = predictions.detach().cpu()
+            targets = targets.detach().cpu()
+            
+            predictions = torch.clamp(predictions, -10, 10)
+            targets = torch.clamp(targets, -10, 10)
+            
+            predictions_original = torch.clamp(torch.expm1(predictions), 0, 1e4).numpy()
+            targets_original = torch.clamp(torch.expm1(targets), 0, 1e4).numpy()
+            
+            try:
+                # Use root_mean_squared_error directly instead of mean_squared_error
+                from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
+                
+                rmse = root_mean_squared_error(
+                    targets_original,
+                    predictions_original,
+                    sample_weight=None
+                )
+                
+                mae = mean_absolute_error(
+                    targets_original,
+                    predictions_original
+                )
+                
+                r2 = r2_score(
+                    targets_original,
+                    predictions_original,
+                    sample_weight=None
+                )
+                
+                # Calculate NDCG
+                ndcg = calculate_ndcg(
+                    torch.tensor(predictions_original),
+                    torch.tensor(targets_original),
+                    k=10
+                )
+                
+                # Validate metrics
+                if not np.isfinite([rmse, mae, r2, ndcg]).all():
+                    logger.warning("Invalid metrics detected, skipping batch")
+                    return None
+                
+                metrics = {
+                    'loss': float(rmse ** 2),  # Use RMSE² as loss
+                    'rmse': float(rmse),
+                    'mae': float(mae),
+                    'r2': float(r2),
+                    'ndcg': float(ndcg)
+                }
+                
+                return metrics
+                
+            except Exception as e:
+                logger.warning(f"Error in sklearn metrics calculation: {str(e)}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Fatal error in calculate_metrics: {str(e)}")
+            return None
+
     def train_epoch(self) -> Dict[str, float]:
-        """Train the model for one epoch."""
+        """Train the model for one epoch with improved metric handling."""
         self.model.train()
-        total_metrics = {'loss': 0.0, 'rmse': 0.0, 'mae': 0.0, 'ndcg': 0.0}
-        num_batches = len(self.train_loader)
+        total_metrics = {'loss': 0.0, 'rmse': 0.0, 'mae': 0.0, 'r2': 0.0, 'ndcg': 0.0}
+        valid_batches = 0
         
         for batch in tqdm(self.train_loader, desc='Training'):
             batch = {k: v.to(self.device) for k, v in batch.items()}
             
             self.optimizer.zero_grad()
             predictions = self.model(batch)
-            # Add L1 regularization to loss
+            
+            # Calculate loss and backpropagate
             loss = self.criterion(predictions, batch['playcount'])
             l1_loss = self.calculate_l1_loss(self.model)
             total_loss = loss + l1_loss
 
-            # Apply sample weights to loss if they exist
             if 'sample_weight' in batch:
                 total_loss = total_loss * batch['sample_weight'].to(self.device)
                 total_loss = total_loss.mean()
 
             total_loss.backward()
-            
-            # Gradient clipping
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-            
             self.optimizer.step()
             
-            # Calculate metrics
+            # Calculate and accumulate metrics
             batch_metrics = self.calculate_metrics(predictions.detach(), batch['playcount'])
-            for k, v in batch_metrics.items():
-                total_metrics[k] += v
-                
+            if batch_metrics is not None:
+                for k, v in batch_metrics.items():
+                    total_metrics[k] += v
+                valid_batches += 1
+        
         # Average metrics
-        avg_metrics = {k: v / num_batches for k, v in total_metrics.items()}
+        if valid_batches > 0:
+            avg_metrics = {k: v / valid_batches for k, v in total_metrics.items()}
+        else:
+            logger.warning("No valid batches in epoch")
+            avg_metrics = {k: float('nan') for k in total_metrics.keys()}
+        
         return avg_metrics
         
     def validate(self) -> Dict[str, float]:
-        """Validate the model."""
+        """Validate the model with consistent metrics."""
         self.model.eval()
-        total_metrics = {'loss': 0.0, 'rmse': 0.0, 'mae': 0.0, 'ndcg': 0.0}
-        num_batches = len(self.val_loader)
+        total_metrics = {
+            'loss': 0.0, 'rmse': 0.0, 'mae': 0.0, 
+            'r2': 0.0, 'ndcg': 0.0  # Ensure all metrics are initialized
+        }
+        valid_batches = 0
         
         with torch.no_grad():
             for batch in tqdm(self.val_loader, desc='Validating'):
@@ -398,11 +461,18 @@ class Trainer:
                 
                 # Calculate metrics
                 batch_metrics = self.calculate_metrics(predictions, batch['playcount'])
-                for k, v in batch_metrics.items():
-                    total_metrics[k] += v
-                    
+                if batch_metrics is not None:
+                    for k, v in batch_metrics.items():
+                        total_metrics[k] += v
+                    valid_batches += 1
+        
         # Average metrics
-        avg_metrics = {k: v / num_batches for k, v in total_metrics.items()}
+        if valid_batches > 0:
+            avg_metrics = {k: v / valid_batches for k, v in total_metrics.items()}
+        else:
+            logger.warning("No valid batches in validation")
+            avg_metrics = {k: float('nan') for k in total_metrics.keys()}
+            
         return avg_metrics
         
     def save_checkpoint(self, epoch: int, metrics: Dict[str, float], is_best: bool = False):
@@ -561,7 +631,7 @@ def main():
     config = {
         'learning_rate': 0.0001,
         'weight_decay': 1e-4,
-        'epochs': 20,
+        'epochs': 1,
         'batch_size': 32,
         'embedding_dim': 64,
         'model_dir': 'models',

@@ -39,6 +39,11 @@ class DataEncoder:
             'instrumentalness', 'liveness', 'tempo', 'time_signature',
             'energy_loudness', 'dance_valence'
         ]
+        self.binary_features = ['explicit', 'gender']
+        
+        # Initialize binary encoders
+        self.explicit_map = {'True': 1, 'False': 0, True: 1, False: 0}
+        self.gender_map = {'M': 1, 'F': 0}
         
         # Add genre mapping dictionary for normalization
         self.genre_mapping = {
@@ -51,6 +56,13 @@ class DataEncoder:
             'rap': 'Rap',
             # Add more mappings as needed
         }
+        
+        # Add 'Other' to genre mapping
+        self.genre_mapping.update({
+            'other': 'Other',
+            'unknown': 'Other',
+            '': 'Other'
+        })
         
         # Add genre clustering fields
         self.genre_map = self._create_genre_map()
@@ -102,6 +114,11 @@ class DataEncoder:
     def fit(self, df: pd.DataFrame) -> None:
         """Fit vectorizers and encoders on the full dataset."""
         df = df.copy()
+        
+        # Ensure 'Other' category is present
+        if 'Other' not in df['main_genre'].values:
+            df = pd.concat([df, pd.DataFrame([{'main_genre': 'Other'}])], ignore_index=True)
+        
         # Log unique genres before normalization
         logger.info(f"Unique genres before normalization: {df['main_genre'].unique()}")
         
@@ -111,17 +128,19 @@ class DataEncoder:
         logger.info(f"Unique genres after normalization: {df['main_genre'].unique()}")
         
         self.known_genres = set(df['main_genre'].str.lower().unique())
-        logger.info(f"Known genres after fitting: {sorted(self.known_genres)}")
-        logger.debug(f"Genres classes: {self.genres_classes_}")
+        self.genres_classes_ = sorted(list(self.known_genres))  # Ensure consistent ordering
         
         # Convert to string to handle any numerical IDs
         self.music_vectorizer.fit(df['music'].astype(str))
         self.artist_vectorizer.fit(df['artist_name'].astype(str))
         self.genre_encoder.fit(df['main_genre'])
-        self.genres_classes_ = self.genre_encoder.classes_
         
+        # Scale numerical features with feature names
         if len(self.numerical_features) > 0:
-            self.scaler.fit(df[self.numerical_features].values)
+            numerical_df = df[self.numerical_features].copy()
+            self.scaler.fit(numerical_df)
+            # Store feature names used during fitting
+            self.numerical_feature_names_ = numerical_df.columns.tolist()
         
         self._is_fitted = True
     
@@ -156,30 +175,63 @@ class DataEncoder:
             return np.array([0])  # Fallback to first genre index
     
     def transform(self, df: pd.DataFrame) -> Dict[str, np.ndarray]:
-        """Transform data using fitted encoders with safety checks."""
+        """Transform data with complete feature set."""
         if not self.fitted:
             raise ValueError("DataEncoder must be fitted before calling transform")
-        
+            
         try:
-            # Handle missing columns by filling with defaults
-            for col in ['music', 'artist_name', 'main_genre']:
-                if col not in df.columns:
-                    df[col] = ''  # Empty string as default
-                    
-            # Convert to string and handle NaN values
-            music_str = df['music'].fillna('').astype(str)
-            artist_str = df['artist_name'].fillna('').astype(str)
-            genre_str = df['main_genre'].fillna(self.genres_classes_[0]).astype(str)
+            # Handle missing columns with defaults
+            df = df.copy()
+            
+            # Handle explicit column properly
+            if 'explicit' not in df.columns:
+                df['explicit'] = False
+            else:
+                # Convert to string first to handle various input types
+                df['explicit'] = df['explicit'].astype(str).map(
+                    lambda x: self.explicit_map.get(x.lower(), 0)
+                )
+            
+            # Handle gender with proper defaults
+            if 'gender' not in df.columns:
+                df['gender'] = 'U'
+            df['gender'] = df['gender'].fillna('U')
+            
+            # Transform categorical features
+            music_features = self.music_vectorizer.transform(
+                df['music'].fillna('').astype(str)
+            )
+            artist_features = self.artist_vectorizer.transform(
+                df['artist_name'].fillna('').astype(str)
+            )
+            genre_features = self.transform_genres(
+                df['main_genre'].fillna('Other').tolist()
+            )
+            
+            # Transform numerical features using DataFrame to preserve feature names
+            numerical_df = df[self.numerical_features].fillna(
+                df[self.numerical_features].mean()
+            )
+            numerical_features = self.scaler.transform(numerical_df)
+            
+            # Transform binary features with proper type conversion
+            explicit = np.array(df['explicit'].values, dtype=np.float32)
+            gender = np.array([
+                self.gender_map.get(str(x).upper(), 0) 
+                for x in df['gender']
+            ], dtype=np.float32)
             
             return {
-                'music_features': self.music_vectorizer.transform(music_str),
-                'artist_features': self.artist_vectorizer.transform(artist_str),
-                'genre_features': self.transform_genres(genre_str),
-                'numerical_features': self.scaler.transform(df[self.numerical_features].fillna(0).values) 
-                    if len(self.numerical_features) > 0 else np.array([])
+                'music_features': music_features,
+                'artist_features': artist_features,
+                'genre_features': genre_features,
+                'numerical_features': numerical_features,
+                'explicit': explicit,
+                'gender': gender
             }
+            
         except Exception as e:
-            logger.error(f"Error in transform: {str(e)}")
+            logger.error(f"Error in transform: {str(e)}\nDataframe columns: {df.columns}")
             raise
     
     def get_dims(self) -> Dict[str, int]:

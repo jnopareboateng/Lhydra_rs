@@ -1,7 +1,7 @@
 {
     "learning_rate": 0.0001,
     "weight_decay": 0.0001,
-    "epochs": 20,
+    "epochs": 1,
     "batch_size": 32,
     "embedding_dim": 64,
     "model_dir": "models",

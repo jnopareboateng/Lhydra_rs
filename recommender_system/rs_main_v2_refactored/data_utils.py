@@ -234,6 +234,62 @@ def split_and_save_data(data_path: str, test_size: float = 0.2, random_state: in
     
     return train_path, test_path, encoder_path
 
+def validate_feature_compatibility(data: pd.DataFrame, encoders: DataEncoder) -> bool:
+    """Validate that data has all required features for model."""
+    required_cols = (
+        encoders.numerical_features +
+        ['music', 'artist_name', 'main_genre', 'explicit', 'gender']
+    )
+    
+    missing_cols = [col for col in required_cols if col not in data.columns]
+    if missing_cols:
+        logger.error(f"Missing required columns: {missing_cols}")
+        return False
+        
+    try:
+        # Test transform to catch any incompatibilities
+        features = encoders.transform(data.head(1))
+        required_features = [
+            'music_features', 'artist_features', 'genre_features',
+            'numerical_features', 'explicit', 'gender'
+        ]
+        
+        missing_features = [f for f in required_features if f not in features]
+        if missing_features:
+            logger.error(f"Missing features after transform: {missing_features}")
+            return False
+            
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error validating features: {str(e)}")
+        return False
+
+def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Preprocess data to ensure all required features exist."""
+    df = df.copy()
+    
+    # Handle explicit content
+    if 'explicit' not in df.columns:
+        df['explicit'] = False
+    
+    # Handle gender
+    if 'gender' not in df.columns:
+        df['gender'] = 'U'
+    
+    # Handle numerical features
+    numerical_cols = [
+        'duration', 'acousticness', 'key', 'mode', 'speechiness',
+        'instrumentalness', 'liveness', 'tempo', 'time_signature',
+        'energy_loudness', 'dance_valence'
+    ]
+    
+    for col in numerical_cols:
+        if col not in df.columns:
+            df[col] = 0
+    
+    return df
+
 if __name__ == "__main__":
     data_path = '../../data/o2_data.csv'
     train_path, test_path, encoder_path = split_and_save_data(data_path)
